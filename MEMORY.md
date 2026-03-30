@@ -1,0 +1,3 @@
+- [项目背景](project_scholai.md) — ScholAI：概率层AI文本重生成产品，绕过AI检测器
+- [技术架构](project_architecture.md) — 已通过PM三轮审查的完整技术架构（v2版本）
+- [用户信息](user_profile.md) — 开发者背景与偏好

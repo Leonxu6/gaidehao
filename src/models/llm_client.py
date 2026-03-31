@@ -116,7 +116,8 @@ class LLMClient:
         """
         Request a JSON-mode completion and parse the result into a dict.
 
-        DeepSeek / OpenAI json_object mode guarantees the output is valid JSON.
+        Includes a multi-stage robust parser to handle common LLM formatting
+        issues (markdown fences, full-width quotes, trailing commas, etc.)
 
         Parameters
         ----------
@@ -131,7 +132,72 @@ class LLMClient:
             prompt=prompt,
             system_prompt=system_prompt,
         )
-        return json.loads(raw)
+        return self._robust_json_parse(raw)
+
+    @staticmethod
+    def _robust_json_parse(raw: str) -> dict:
+        """
+        Parse a JSON string returned by an LLM with multiple fallback strategies.
+
+        Strategy order:
+        1. Direct json.loads on the stripped string.
+        2. Strip markdown code fences (```json ... ``` or ``` ... ```).
+        3. Extract the first {...} block via regex.
+        4. Replace common full-width / curly quotes with ASCII equivalents,
+           remove trailing commas before } or ], then retry.
+        """
+        import re as _re
+
+        def _try_load(s: str):
+            return json.loads(s.strip())
+
+        # 1. Direct parse
+        try:
+            return _try_load(raw)
+        except json.JSONDecodeError:
+            pass
+
+        # 2. Strip markdown code fences
+        cleaned = _re.sub(r"```(?:json)?\s*", "", raw).replace("```", "").strip()
+        try:
+            return _try_load(cleaned)
+        except json.JSONDecodeError:
+            pass
+
+        # 3. Extract first {...} block
+        match = _re.search(r"\{.*\}", cleaned, _re.DOTALL)
+        if match:
+            try:
+                return _try_load(match.group())
+            except json.JSONDecodeError:
+                pass
+
+        # 4. Normalise problematic characters then retry
+        normalised = cleaned
+        # Full-width / curly quotes → ASCII
+        for bad, good in [
+            ("\u201c", '"'), ("\u201d", '"'),  # "" → ""
+            ("\u2018", "'"), ("\u2019", "'"),  # '' → ''
+            ("\uff1a", ":"), ("\uff0c", ","),  # ：， → :,
+        ]:
+            normalised = normalised.replace(bad, good)
+        # Trailing commas before ] or }
+        normalised = _re.sub(r",\s*([}\]])", r"\1", normalised)
+        try:
+            return _try_load(normalised)
+        except json.JSONDecodeError:
+            pass
+
+        # Extract {...} from normalised
+        match2 = _re.search(r"\{.*\}", normalised, _re.DOTALL)
+        if match2:
+            try:
+                return _try_load(match2.group())
+            except json.JSONDecodeError:
+                pass
+
+        logger.error("All JSON parse strategies failed. Raw response (first 300 chars): %r", raw[:300])
+        raise json.JSONDecodeError("Could not parse LLM response as JSON", raw, 0)
 
     def generate_stream(
         self,

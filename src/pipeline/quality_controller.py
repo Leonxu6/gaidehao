@@ -35,7 +35,7 @@ class DetectionMetrics:
     ppl_estimate: float          # Unigram-entropy-based PPL approximation
     burstiness: float            # Sentence-length standard deviation
     ttr: float                   # Type-Token Ratio
-    ppl_passed: bool             # 25 <= ppl_estimate <= 80
+    ppl_passed: bool             # 25 <= ppl_estimate <= 150
     burstiness_passed: bool      # burstiness >= 10
     ttr_passed: bool             # ttr >= 0.45
     overall_passed: bool         # all three must pass
@@ -138,7 +138,11 @@ class QualityController:
         burstiness = self._compute_burstiness(text)
         ttr = self._compute_ttr(text)
 
-        ppl_passed = 25.0 <= ppl <= 80.0
+        # PPL upper bound is 150 (not 80) because our unigram-entropy estimate
+        # runs much higher than true LM perplexity for English academic text —
+        # a vocabulary-rich human paragraph routinely scores 100-140 by this
+        # approximation while a genuine LM would score it ~30-60.
+        ppl_passed = 25.0 <= ppl <= 150.0
         burstiness_passed = burstiness >= 10.0
         ttr_passed = ttr >= 0.45
 

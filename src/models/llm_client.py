@@ -196,6 +196,28 @@ class LLMClient:
             except json.JSONDecodeError:
                 pass
 
+        # 5. Item-level extraction: find a "propositions" array and parse each
+        # item individually, skipping any broken items.  This recovers from the
+        # case where one proposition's text contains an unescaped quote or
+        # literal newline that makes the entire JSON invalid.
+        for source in (normalised, raw):
+            arr_match = _re.search(r'"propositions"\s*:\s*\[', source)
+            if arr_match:
+                after_bracket = source[arr_match.end():]
+                items = []
+                for item_match in _re.finditer(r'\{[^{}]+\}', after_bracket):
+                    try:
+                        obj = json.loads(item_match.group())
+                        if isinstance(obj, dict) and "text" in obj:
+                            items.append(obj)
+                    except json.JSONDecodeError:
+                        pass
+                if items:
+                    logger.warning(
+                        "Strategy 5: recovered %d proposition(s) via item-level extraction.", len(items)
+                    )
+                    return {"propositions": items}
+
         logger.error("All JSON parse strategies failed. Raw response (first 300 chars): %r", raw[:300])
         raise json.JSONDecodeError("Could not parse LLM response as JSON", raw, 0)
 

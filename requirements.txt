@@ -6,3 +6,4 @@ pydantic>=2.0.0
 pytest>=7.0.0
 pytest-asyncio>=0.21.0
 tenacity>=8.0.0
+bert-score>=0.3.13

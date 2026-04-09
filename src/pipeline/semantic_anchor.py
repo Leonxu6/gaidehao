@@ -40,9 +40,19 @@ class SemanticAnchor:
 
     embedding: np.ndarray               # Full-document embedding, shape (D,)
     original_text: str                  # Verbatim original text
-    chunk_embeddings: list[np.ndarray]  # Per-paragraph embeddings, each shape (D,)
+    chunk_embeddings: list[np.ndarray]   # Per-paragraph embeddings, each shape (D,)
     chunks: list[str]                   # Corresponding paragraph texts
     similarity_threshold: float = 0.80  # Coarse-screening pass/fail boundary
+
+    def __repr__(self) -> str:
+        return (
+            f"SemanticAnchor("
+            f"embedding_dim={self.embedding.shape[0]}, "
+            f"n_chunks={len(self.chunks)}, "
+            f"text_len={len(self.original_text)}, "
+            f"threshold={self.similarity_threshold}"
+            f")"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -169,6 +179,10 @@ class SemanticAnchorBuilder:
         paragraph with the highest cosine similarity and report whether it
         passes the threshold.
 
+        All similarities are computed in a single matrix multiplication
+        (vectorised) rather than nested loops — O(n*m) but with one matmul
+        instead of n*m individual dot products.
+
         Parameters
         ----------
         anchor : SemanticAnchor
@@ -187,6 +201,10 @@ class SemanticAnchorBuilder:
         if not anchor.chunk_embeddings:
             return []
 
+        import numpy as np
+
+        import numpy as np
+
         rewritten_chunks = self._split_paragraphs(rewritten_text)
         if not rewritten_chunks:
             # Treat the whole rewritten text as one chunk
@@ -194,26 +212,25 @@ class SemanticAnchorBuilder:
 
         rewritten_matrix = self._client.encode_batch(rewritten_chunks)
 
-        results: list[dict] = []
-        for idx, (orig_chunk, orig_emb) in enumerate(
-            zip(anchor.chunks, anchor.chunk_embeddings)
-        ):
-            # Find the best-matching rewritten chunk
-            best_similarity = -1.0
-            for j in range(len(rewritten_chunks)):
-                sim = EmbeddingClient.cosine_similarity(orig_emb, rewritten_matrix[j])
-                if sim > best_similarity:
-                    best_similarity = sim
+        # Vectorised similarity: (n, D) @ (D, m).T = (n, m)  — one matmul
+        # instead of the previous O(n*m) nested loop.
+        n = len(anchor.chunk_embeddings)
+        m = len(rewritten_chunks)
+        orig_matrix = np.stack(anchor.chunk_embeddings)  # (n, D)
+        sim_matrix = orig_matrix @ rewritten_matrix.T    # (n, m)
 
-            passed = best_similarity >= anchor.similarity_threshold
-            results.append(
-                {
-                    "chunk_idx": idx,
-                    "original": orig_chunk,
-                    "similarity": best_similarity,
-                    "passed": passed,
-                }
-            )
+        # Best similarity per original chunk (row-wise max)
+        best_sims = sim_matrix.max(axis=1)              # (n,)
+
+        results: list[dict] = [
+            {
+                "chunk_idx": idx,
+                "original": chunk,
+                "similarity": float(best_sims[idx]),
+                "passed": bool(best_sims[idx] >= anchor.similarity_threshold),
+            }
+            for idx, chunk in enumerate(anchor.chunks)
+        ]
 
         return results
 

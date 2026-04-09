@@ -42,6 +42,16 @@ class DetectionMetrics:
     ttr_passed: bool             # ttr >= 0.45
     overall_passed: bool         # all three must pass
 
+    def __repr__(self) -> str:
+        return (
+            f"DetectionMetrics("
+            f"overall={'✓' if self.overall_passed else '✗'}, "
+            f"ppl={self.ppl_estimate:.1f}({'✓' if self.ppl_passed else '✗'}), "
+            f"burst={self.burstiness:.1f}({'✓' if self.burstiness_passed else '✗'}), "
+            f"ttr={self.ttr:.3f}({'✓' if self.ttr_passed else '✗'})"
+            f")"
+        )
+
 
 @dataclass
 class QualityMetrics:
@@ -56,12 +66,30 @@ class QualityMetrics:
     quality_passed: bool         # overall_score >= 3.5
     needs_regeneration: bool     # overall_score < 3.0
 
+    def __repr__(self) -> str:
+        issues = f", issues={self.rule_issues}" if self.rule_issues else ""
+        return (
+            f"QualityMetrics("
+            f"score={self.overall_score:.2f}({'✓' if self.quality_passed else '✗'}), "
+            f"f={self.faithfulness:.2f} c={self.coherence:.2f} "
+            f"fl={self.fluency:.2f} r={self.readability:.2f}{issues}"
+            f")"
+        )
+
 
 @dataclass
 class QualityReport:
     detection: DetectionMetrics
     quality: QualityMetrics
     final_action: str  # "accept" | "retry_detection" | "retry_quality" | "retry_semantic"
+
+    def __repr__(self) -> str:
+        return (
+            f"QualityReport("
+            f"action={self.final_action!r}, "
+            f"{self.detection}, {self.quality}"
+            f")"
+        )
 
 
 # ---------------------------------------------------------------------------

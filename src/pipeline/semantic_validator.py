@@ -54,6 +54,16 @@ class PropositionValidationResult:
     neutral_score: float
     status: str  # "preserved" | "contradicted" | "missing"
 
+    def __repr__(self) -> str:
+        return (
+            f"PropositionValidationResult("
+            f"status={self.status!r}, "
+            f"entailment={self.entailment_score:.3f}, "
+            f"contradiction={self.contradiction_score:.3f}, "
+            f"text={self.proposition.text[:40]!r}"
+            f")"
+        )
+
 
 @dataclass
 class ValidationResult:
@@ -68,6 +78,17 @@ class ValidationResult:
     missing_propositions: list[Proposition]
     layer3_bertscore: Optional[float]  # BERTScore F1; None if unavailable
     rewrite_action: str               # "accept" | "retry_semantic"
+
+    def __repr__(self) -> str:
+        return (
+            f"ValidationResult("
+            f"passed={self.passed}, "
+            f"layer1_similarity={self.layer1_similarity:.4f}, "
+            f"contradicted={len(self.contradicted_propositions)}, "
+            f"missing={len(self.missing_propositions)}, "
+            f"action={self.rewrite_action!r}"
+            f")"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -117,6 +138,16 @@ class SemanticValidator:
         self._entailment_threshold = entailment_threshold
         self._contradiction_threshold = contradiction_threshold
         self._max_missing_allowed = max_missing_allowed
+
+        # Importance-weighted thresholds for Layer 2 NLI.
+        # High-importance propositions require stricter entailment to be
+        # considered "preserved"; low-importance ones are more forgiving.
+        # Format: importance -> (entailment_threshold, contradiction_threshold)
+        self._importance_thresholds: dict[str, tuple[float, float]] = {
+            "high":   (0.85, 0.65),
+            "medium": (0.75, 0.70),
+            "low":    (0.65, 0.75),
+        }
 
         # Lazy-loaded NLI artefacts
         self._nli_tokenizer = None
@@ -233,36 +264,45 @@ class SemanticValidator:
         """
         Layer 2: Proposition-level NLI verification.
 
-        For each proposition the rewritten_text is used as the NLI *premise*
-        and the proposition text is used as the *hypothesis*.
+        All propositions are verified in a single forward pass (batch) for
+        efficiency. The rewritten_text is used as the NLI *premise* and each
+        proposition text is used as a *hypothesis*.
 
         Returns
         -------
         list[PropositionValidationResult]
         """
-        results: list[PropositionValidationResult] = []
+        if not propositions:
+            return []
 
-        for prop in propositions:
-            scores = self._nli_check(
-                premise=rewritten_text,
-                hypothesis=prop.text,
-            )
+        hypotheses = [prop.text for prop in propositions]
+        all_scores = self._nli_check_batch(rewritten_text, hypotheses)
+
+        results: list[PropositionValidationResult] = []
+        for prop, scores in zip(propositions, all_scores):
             entailment = scores.get("entailment", 0.0)
             contradiction = scores.get("contradiction", 0.0)
             neutral = scores.get("neutral", 0.0)
 
-            if entailment >= self._entailment_threshold:
+            # Use importance-weighted thresholds
+            ent_t, con_t = self._importance_thresholds.get(
+                prop.importance, (self._entailment_threshold, self._contradiction_threshold)
+            )
+
+            if entailment >= ent_t:
                 status = "preserved"
-            elif contradiction >= self._contradiction_threshold:
+            elif contradiction >= con_t:
                 status = "contradicted"
             else:
                 status = "missing"
 
             logger.debug(
-                "Layer 2 prop=%r  entailment=%.3f  contradiction=%.3f  status=%s",
+                "Layer 2 prop=%r importance=%s entailment=%.3f(>=%.2f) "
+                "contradiction=%.3f(>=%.2f) status=%s",
                 prop.text[:60],
-                entailment,
-                contradiction,
+                prop.importance,
+                entailment, ent_t,
+                contradiction, con_t,
                 status,
             )
 
@@ -278,24 +318,39 @@ class SemanticValidator:
 
         return results
 
-    def _nli_check(self, premise: str, hypothesis: str) -> dict:
+    def _get_layer2_thresholds(self, importance: str) -> tuple[float, float]:
         """
-        Run NLI inference for a single (premise, hypothesis) pair.
+        Return the (entailment_threshold, contradiction_threshold) to use for
+        a proposition of the given *importance* level.
+        """
+        return self._importance_thresholds.get(
+            importance,
+            (self._entailment_threshold, self._contradiction_threshold),
+        )
 
-        The NLI model is loaded lazily on first call and cached on the
-        instance for subsequent calls.
+    def _nli_check_batch(
+        self, premise: str, hypotheses: list[str]
+    ) -> list[dict]:
+        """
+        Run NLI inference for one premise against multiple hypotheses in a single
+        forward pass (batch processing).
+
+        The NLI model is loaded lazily on first call and cached on the instance
+        for subsequent calls.
 
         Parameters
         ----------
         premise : str
-            The rewritten text (full document).
-        hypothesis : str
-            The proposition text to verify.
+            The rewritten text (full document), used as the NLI premise for
+            all hypotheses.
+        hypotheses : list[str]
+            List of proposition texts to verify against the premise.
 
         Returns
         -------
-        dict with keys "entailment", "contradiction", "neutral" (float each,
-        summing to ≈ 1.0).
+        list[dict]
+            One dict per hypothesis with keys "entailment", "contradiction",
+            "neutral" (float each, summing to ≈ 1.0).
         """
         import torch
         from transformers import AutoTokenizer, AutoModelForSequenceClassification
@@ -312,33 +367,39 @@ class SemanticValidator:
             self._nli_model.eval()
             logger.info("NLI model loaded.")
 
+        # Batch-tokenise all (premise, hypothesis) pairs
         inputs = self._nli_tokenizer(
-            premise,
-            hypothesis,
+            [premise] * len(hypotheses),
+            hypotheses,
             return_tensors="pt",
+            padding=True,
             truncation=True,
             max_length=512,
         )
 
         with torch.no_grad():
-            logits = self._nli_model(**inputs).logits
+            logits = self._nli_model(**inputs).logits  # shape: (batch, 3)
 
-        probs = torch.softmax(logits, dim=-1).squeeze()
+        probs = torch.softmax(logits, dim=-1)  # shape: (batch, 3)
         id2label: dict = self._nli_model.config.id2label
 
-        # id2label keys are ints; normalise label strings to lowercase
-        scores = {
-            id2label[i].lower(): probs[i].item()
-            for i in range(len(id2label))
-        }
+        results: list[dict] = []
+        for row in probs:
+            scores = {id2label[i].lower(): row[i].item() for i in range(len(id2label))}
+            results.append({
+                "entailment": scores.get("entailment", 0.0),
+                "contradiction": scores.get("contradiction", 0.0),
+                "neutral": scores.get("neutral", 0.0),
+            })
+        return results
 
-        # Ensure canonical keys exist even if the model uses different casing
-        canonical = {
-            "entailment": scores.get("entailment", 0.0),
-            "contradiction": scores.get("contradiction", 0.0),
-            "neutral": scores.get("neutral", 0.0),
-        }
-        return canonical
+    def _nli_check(self, premise: str, hypothesis: str) -> dict:
+        """
+        Run NLI inference for a single (premise, hypothesis) pair.
+
+        Thin wrapper around _nli_check_batch for backward compatibility.
+        """
+        return self._nli_check_batch(premise, [hypothesis])[0]
 
     def _layer3_check(
         self,

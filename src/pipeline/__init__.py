@@ -299,3 +299,21 @@ class ScholAIPipeline:
             layer1_similarity=layer1_similarity,
             final_quality_score=final_quality_score,
         )
+
+
+__all__ = [
+    "PropositionExtractor",
+    "SemanticAnchorBuilder",
+    "SemanticAnchor",
+    "SemanticValidator",
+    "ValidationResult",
+    "ProbabilisticRewriter",
+    "QualityController",
+    "QualityReport",
+    "CoherenceFixer",
+    "RetryOrchestrator",
+    "ScholAIPipeline",
+    "PipelineConfig",
+    "PipelineResult",
+]
+

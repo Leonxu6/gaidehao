@@ -26,32 +26,9 @@ from typing import Optional
 
 from src.config import LLMConfig
 from src.models.llm_client import LLMClient
-from src.pipeline.proposition_extractor import Proposition
+from src.pipeline.proposition_extractor import Proposition, _is_chinese
 
 logger = logging.getLogger(__name__)
-
-# ---------------------------------------------------------------------------
-# Language detection helper (reused from proposition_extractor pattern)
-# ---------------------------------------------------------------------------
-
-_CHINESE_CHAR_THRESHOLD = 0.30
-
-
-def _chinese_ratio(text: str) -> float:
-    if not text:
-        return 0.0
-    cjk = sum(
-        1
-        for ch in text
-        if "\u4e00" <= ch <= "\u9fff"
-        or "\u3400" <= ch <= "\u4dbf"
-    )
-    return cjk / len(text)
-
-
-def _is_chinese(text: str) -> bool:
-    return _chinese_ratio(text) > _CHINESE_CHAR_THRESHOLD
-
 
 # ---------------------------------------------------------------------------
 # Data classes

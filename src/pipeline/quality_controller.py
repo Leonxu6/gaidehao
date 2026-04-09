@@ -22,23 +22,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from src.models.llm_client import LLMClient
-
-# ---------------------------------------------------------------------------
-# Language detection helper (mirrors proposition_extractor)
-# ---------------------------------------------------------------------------
-
-_CHINESE_CHAR_THRESHOLD = 0.30
-
-
-def _is_chinese(text: str) -> bool:
-    if not text:
-        return False
-    cjk = sum(
-        1
-        for ch in text
-        if "\u4e00" <= ch <= "\u9fff" or "\u3400" <= ch <= "\u4dbf"
-    )
-    return (cjk / len(text)) > _CHINESE_CHAR_THRESHOLD
+from src.pipeline.proposition_extractor import _is_chinese
 
 logger = logging.getLogger(__name__)
 

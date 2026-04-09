@@ -23,6 +23,23 @@ from typing import Optional
 
 from src.models.llm_client import LLMClient
 
+# ---------------------------------------------------------------------------
+# Language detection helper (mirrors proposition_extractor)
+# ---------------------------------------------------------------------------
+
+_CHINESE_CHAR_THRESHOLD = 0.30
+
+
+def _is_chinese(text: str) -> bool:
+    if not text:
+        return False
+    cjk = sum(
+        1
+        for ch in text
+        if "\u4e00" <= ch <= "\u9fff" or "\u3400" <= ch <= "\u4dbf"
+    )
+    return (cjk / len(text)) > _CHINESE_CHAR_THRESHOLD
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -66,7 +83,7 @@ class QualityReport:
 # G-Eval prompt template
 # ---------------------------------------------------------------------------
 
-_GEVAL_PROMPT = """\
+_GEVAL_PROMPT_ZH = """\
 你是一个专业的中文写作质量评估员。请对以下文本进行评分。
 
 【评分维度】
@@ -83,9 +100,31 @@ _GEVAL_PROMPT = """\
 请按以下JSON格式输出，不要有其他文字：
 {{"faithfulness": 分数, "coherence": 分数, "fluency": 分数, "readability": 分数}}"""
 
-_GEVAL_SYSTEM = (
+_GEVAL_SYSTEM_ZH = (
     "你是一个专业的中文写作质量评估员。"
     "只输出要求的JSON，不要有任何额外文字。"
+)
+
+_GEVAL_PROMPT_EN = """\
+You are a professional English writing quality evaluator. Please score the following text.
+
+[Scoring dimensions]
+1. Faithfulness: Is the content accurate? Any hallucination or fabrication?
+2. Coherence: Are paragraphs logically connected? Does context flow smoothly?
+3. Fluency: Is the language natural? Any grammatical errors?
+4. Readability: Is the structure clear? Are word choices appropriate?
+
+[Scoring standard] 5=excellent 4=good 3=average 2=poor 1=very poor
+
+[Text to evaluate]
+{text}
+
+Output only valid JSON, nothing else:
+{{"faithfulness": score, "coherence": score, "fluency": score, "readability": score}}"""
+
+_GEVAL_SYSTEM_EN = (
+    "You are a professional English writing quality evaluator. "
+    "Output only the requested JSON and nothing else."
 )
 
 
@@ -313,12 +352,22 @@ class QualityController:
         faithfulness, coherence, fluency, readability.
 
         Falls back to neutral scores (3.0) on parse failure.
+
+        The prompt language is selected based on the dominant language of *text*:
+        Chinese text uses the Chinese G-Eval prompt; English (and other languages)
+        use the English prompt for better evaluator alignment.
         """
-        prompt = self._build_geval_prompt(text)
+        is_zh = _is_chinese(text)
+        system_prompt = _GEVAL_SYSTEM_ZH if is_zh else _GEVAL_SYSTEM_EN
+        user_prompt = (
+            _GEVAL_PROMPT_ZH.format(text=text)
+            if is_zh
+            else _GEVAL_PROMPT_EN.format(text=text)
+        )
         try:
             response = self._llm.generate(
-                prompt=prompt,
-                system_prompt=_GEVAL_SYSTEM,
+                prompt=user_prompt,
+                system_prompt=system_prompt,
                 temperature=0.0,
                 max_tokens=100,
             )
@@ -331,10 +380,6 @@ class QualityController:
                 "fluency": 3.0,
                 "readability": 3.0,
             }
-
-    def _build_geval_prompt(self, text: str) -> str:
-        """Insert text into the G-Eval prompt template."""
-        return _GEVAL_PROMPT.format(text=text)
 
     def _parse_geval_response(self, response: str) -> dict:
         """

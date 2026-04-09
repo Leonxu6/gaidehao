@@ -22,7 +22,8 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from src.models.llm_client import LLMClient
-from src.pipeline.proposition_extractor import _is_chinese
+from src.pipeline.proposition_extractor import Proposition
+from src.utils import is_chinese
 
 logger = logging.getLogger(__name__)
 
@@ -341,7 +342,7 @@ class QualityController:
         Chinese text uses the Chinese G-Eval prompt; English (and other languages)
         use the English prompt for better evaluator alignment.
         """
-        is_zh = _is_chinese(text)
+        is_zh = is_chinese(text)
         system_prompt = _GEVAL_SYSTEM_ZH if is_zh else _GEVAL_SYSTEM_EN
         user_prompt = (
             _GEVAL_PROMPT_ZH.format(text=text)

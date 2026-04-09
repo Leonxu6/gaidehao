@@ -13,19 +13,17 @@ Supports Chinese and English input with language-appropriate prompts.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from src.config import LLMConfig
 from src.models.llm_client import LLMClient
+from src.utils import is_chinese
 
 logger = logging.getLogger(__name__)
 
 # Valid enum values — used for validation after parsing
 _VALID_TYPES = {"claim", "entity", "fact"}
 _VALID_IMPORTANCES = {"high", "medium", "low"}
-
-# Fraction of characters that must be CJK for the text to be treated as Chinese
-_CHINESE_CHAR_THRESHOLD = 0.30
 
 
 @dataclass
@@ -48,22 +46,9 @@ class ExtractionResult:
     model_used: str
 
 
-def _chinese_ratio(text: str) -> float:
-    """Return the fraction of characters in *text* that are CJK ideographs."""
-    if not text:
-        return 0.0
-    cjk_count = sum(
-        1
-        for ch in text
-        if "\u4e00" <= ch <= "\u9fff"   # CJK Unified Ideographs (core block)
-        or "\u3400" <= ch <= "\u4dbf"   # CJK Extension A
-        or "\u20000" <= ch <= "\u2a6df" # CJK Extension B (surrogate pair range)
-    )
-    return cjk_count / len(text)
-
-
 def _is_chinese(text: str) -> bool:
-    return _chinese_ratio(text) > _CHINESE_CHAR_THRESHOLD
+    """Proxy kept for backward compatibility — prefer src.utils.is_chinese."""
+    return is_chinese(text)
 
 
 class PropositionExtractor:

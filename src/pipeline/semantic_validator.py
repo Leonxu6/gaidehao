@@ -33,8 +33,9 @@ import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
-from src.pipeline.proposition_extractor import Proposition, _is_chinese
+from src.pipeline.proposition_extractor import Proposition
 from src.pipeline.semantic_anchor import SemanticAnchor, SemanticAnchorBuilder
+from src.utils import is_chinese
 
 logger = logging.getLogger(__name__)
 
@@ -365,7 +366,7 @@ class SemanticValidator:
             P, R, F1 = bert_score_fn(
                 cands=[rewritten_text],
                 refs=[original_text],
-                lang="zh" if _is_chinese(rewritten_text) else "en",
+                lang="zh" if is_chinese(rewritten_text) else "en",
                 verbose=False,
             )
             f1_value = float(F1[0].item())

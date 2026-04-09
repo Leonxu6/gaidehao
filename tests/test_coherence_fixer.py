@@ -16,21 +16,12 @@ RetryOrchestrator tests (real API, short text):
 
 from __future__ import annotations
 
-import os
 import pytest
 
-# ---------------------------------------------------------------------------
-# API key — injected before any config/client imports that might fail
-# ---------------------------------------------------------------------------
+# API key — loaded from .env by tests/conftest.py
+from tests.conftest import get_api_key
 
-DEEPSEEK_API_KEY = "sk-010552964cca453a92cb82756ca9baa0"
-
-
-@pytest.fixture(autouse=True)
-def set_api_key(monkeypatch):
-    """Inject the DeepSeek API key into the environment for every test."""
-    monkeypatch.setenv("DEEPSEEK_API_KEY", DEEPSEEK_API_KEY)
-
+DEEPSEEK_API_KEY = get_api_key()
 
 # ---------------------------------------------------------------------------
 # Imports

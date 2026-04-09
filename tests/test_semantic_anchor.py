@@ -17,7 +17,9 @@ from __future__ import annotations
 import os
 
 # Must be set before any src.* import that transitively loads src.config
-os.environ["DEEPSEEK_API_KEY"] = "sk-010552964cca453a92cb82756ca9baa0"
+# API key is loaded automatically by tests/conftest.py (runs before this module)
+from tests.conftest import get_api_key
+os.environ["DEEPSEEK_API_KEY"] = get_api_key()
 
 import numpy as np
 import pytest

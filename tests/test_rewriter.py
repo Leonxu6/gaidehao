@@ -18,15 +18,10 @@ import pytest
 # API key injection (must happen before any config/client imports)
 # ---------------------------------------------------------------------------
 
-DEEPSEEK_API_KEY = "sk-010552964cca453a92cb82756ca9baa0"
+# API key is loaded automatically by tests/conftest.py
+from tests.conftest import get_api_key
 
-
-@pytest.fixture(autouse=True)
-def set_api_key():
-    """Inject the test API key into the environment for every test."""
-    os.environ["DEEPSEEK_API_KEY"] = DEEPSEEK_API_KEY
-    yield
-
+DEEPSEEK_API_KEY = get_api_key()
 
 # ---------------------------------------------------------------------------
 # Imports

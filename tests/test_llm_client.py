@@ -8,19 +8,14 @@ avoid actually sending a bad request.
 
 from __future__ import annotations
 
-import os
 import pytest
 import openai
 from unittest.mock import MagicMock, patch
 
-# Ensure the API key is available for all tests in this module
-DEEPSEEK_API_KEY = "sk-010552964cca453a92cb82756ca9baa0"
+# API key — loaded from .env by tests/conftest.py
+from tests.conftest import get_api_key
 
-
-@pytest.fixture(autouse=True)
-def set_api_key(monkeypatch):
-    """Inject the test API key into the environment for every test."""
-    monkeypatch.setenv("DEEPSEEK_API_KEY", DEEPSEEK_API_KEY)
+DEEPSEEK_API_KEY = get_api_key()
 
 
 # Import after the key is injectable (config reads env at instantiation time)

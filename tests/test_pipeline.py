@@ -23,7 +23,9 @@ import pytest
 # Inject API key before any config imports
 # ---------------------------------------------------------------------------
 
-os.environ["DEEPSEEK_API_KEY"] = "sk-010552964cca453a92cb82756ca9baa0"
+# API key is loaded automatically by tests/conftest.py (runs before this module)
+from tests.conftest import get_api_key
+os.environ["DEEPSEEK_API_KEY"] = get_api_key()
 
 from src.pipeline import ScholAIPipeline, PipelineConfig, PipelineResult
 

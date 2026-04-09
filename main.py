@@ -8,6 +8,7 @@ Usage examples
   python main.py --file input.txt --output output.txt
   python main.py --file input.txt --verbose
   python main.py "文本内容" --api-key sk-xxx --max-retries 2
+  python main.py --health-check
 """
 
 from __future__ import annotations
@@ -36,8 +37,17 @@ def build_parser() -> argparse.ArgumentParser:
               python main.py "AI生成的文本内容"
               python main.py --file input.txt --output output.txt --verbose
               python main.py "文本" --api-key sk-xxx --max-retries 2
+              python main.py --health-check
             """
         ),
+    )
+
+    # Health check
+    parser.add_argument(
+        "--health-check",
+        action="store_true",
+        default=False,
+        help="Run a pipeline health check and exit.",
     )
 
     # Input: positional text or --file
@@ -93,6 +103,97 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     return parser
+
+
+# ---------------------------------------------------------------------------
+# Health check
+# ---------------------------------------------------------------------------
+
+def _print_check(label: str, ok: bool, detail: str = "") -> None:
+    icon = "✓" if ok else "✗"
+    status = "PASS" if ok else "FAIL"
+    detail_str = f"  ({detail})" if detail else ""
+    print(f"  [{icon}] {label}: {status}{detail_str}", file=sys.stderr)
+
+
+def run_health_check(api_key: str) -> int:
+    """
+    Run a pipeline health check covering:
+      1. API key validity (DeepSeek reachability)
+      2. Embedding model loading (BGE-M3)
+      3. Minimal pipeline smoke test (1 proposition + embed + validate)
+    """
+    print("ScholAI Health Check", file=sys.stderr)
+    print("-" * 40, file=sys.stderr)
+
+    all_ok = True
+
+    # 1. API key
+    try:
+        from src.config import LLMConfig
+        from src.models.llm_client import LLMClient
+        cfg = LLMConfig(api_key=api_key)
+        client = LLMClient(config=cfg)
+        # Quick reachability check
+        response = client.generate(
+            prompt="Reply exactly: ok",
+            system_prompt="You are a test assistant. Reply with the exact word 'ok'.",
+            temperature=0.0,
+            max_tokens=5,
+        )
+        api_ok = "ok" in response.lower()
+        _print_check("DeepSeek API key", api_ok, "API reachable" if api_ok else f"unexpected reply: {response!r}")
+        all_ok = all_ok and api_ok
+    except Exception as exc:
+        _print_check("DeepSeek API key", False, str(exc))
+        all_ok = False
+
+    # 2. Embedding model
+    try:
+        from src.config import EmbeddingConfig
+        from src.models.embedding_client import EmbeddingClient
+        emb_cfg = EmbeddingConfig()
+        emb_client = EmbeddingClient(config=emb_cfg)
+        # Trigger model loading and encode
+        vec = emb_client.encode("健康检查测试句子")
+        emb_ok = vec.shape[0] == 1024
+        _print_check(
+            "BGE-M3 embedding model",
+            emb_ok,
+            f"dim={vec.shape[0]}" if emb_ok else "unexpected dimension",
+        )
+        all_ok = all_ok and emb_ok
+    except Exception as exc:
+        _print_check("BGE-M3 embedding model", False, str(exc))
+        all_ok = False
+
+    # 3. Proposition extractor (LLM)
+    try:
+        from src.config import LLMConfig
+        from src.models.llm_client import LLMClient
+        from src.pipeline.proposition_extractor import PropositionExtractor
+        cfg = LLMConfig(api_key=api_key)
+        llm = LLMClient(config=cfg)
+        extractor = PropositionExtractor(llm_client=llm, config=cfg)
+        result = extractor.extract("今天香港天气很好，我们去海边散步。")
+        prop_ok = len(result.propositions) > 0
+        _print_check(
+            "Proposition extractor",
+            prop_ok,
+            f"{len(result.propositions)} propositions" if prop_ok else "no propositions returned",
+        )
+        all_ok = all_ok and prop_ok
+    except Exception as exc:
+        _print_check("Proposition extractor", False, str(exc))
+        all_ok = False
+
+    print("-" * 40, file=sys.stderr)
+    if all_ok:
+        print("All checks passed.", file=sys.stderr)
+        return 0
+    else:
+        print("Some checks failed — see above.", file=sys.stderr)
+        return 1
 
 
 # ---------------------------------------------------------------------------
@@ -179,6 +280,20 @@ def print_verbose_report(result) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    # ------------------------------------------------------------------
+    # Health check mode
+    # ------------------------------------------------------------------
+    if args.health_check:
+        api_key = args.api_key or os.environ.get("DEEPSEEK_API_KEY", "")
+        if not api_key:
+            print(
+                "[ERROR] DeepSeek API key is missing.\n"
+                "  Set the DEEPSEEK_API_KEY environment variable or pass --api-key.",
+                file=sys.stderr,
+            )
+            return 1
+        return run_health_check(api_key)
 
     # ------------------------------------------------------------------
     # Resolve API key

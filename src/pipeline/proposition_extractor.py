@@ -34,6 +34,12 @@ class Proposition:
     prop_type: str   # "claim" | "entity" | "fact"
     importance: str  # "high" | "medium" | "low"
 
+    def __repr__(self) -> str:
+        return (
+            f"Proposition(type={self.prop_type!r}, "
+            f"importance={self.importance!r}, text={self.text[:40]!r})"
+        )
+
 
 @dataclass
 class ExtractionResult:

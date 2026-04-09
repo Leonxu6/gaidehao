@@ -18,3 +18,24 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Type checkers & linters
+.mypy_cache/
+.ruff_cache/
+.pyright/
+
+# Distribution / packaging
+*.whl
+*.tar.gz
+*.zip
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Hypothesis (property-based testing)
+.hypothesis/

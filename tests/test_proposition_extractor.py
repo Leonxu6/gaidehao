@@ -29,8 +29,9 @@ from src.pipeline.proposition_extractor import (
     ExtractionResult,
     Proposition,
     PropositionExtractor,
-    _is_chinese,
 )
+
+from src.utils import is_chinese
 
 # ---------------------------------------------------------------------------
 # Test texts

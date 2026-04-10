@@ -24,7 +24,8 @@ import random
 from dataclasses import dataclass
 
 from src.models.llm_client import LLMClient
-from src.pipeline.proposition_extractor import Proposition, _is_chinese
+from src.pipeline.proposition_extractor import Proposition
+from src.utils import is_chinese
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +187,7 @@ class ProbabilisticRewriter:
         attempt=2 → detection-evasion focus (more sentence diversity)
         attempt=3 → semantic-preservation focus (re-emphasise dropped propositions)
         """
-        is_zh = _is_chinese(text)
+        is_zh = is_chinese(text)
         high_props = [p for p in propositions if p.importance == "high"]
         all_props = propositions  # include medium/low in the constraint list too
 
@@ -206,7 +207,7 @@ class ProbabilisticRewriter:
         attempt: int,
     ) -> tuple[str, str]:
         """Build prompts for single-paragraph rewrite (used by coherence fixer)."""
-        is_zh = _is_chinese(paragraph)
+        is_zh = is_chinese(paragraph)
 
         if is_zh:
             system_prompt = self._zh_system_prompt(attempt)

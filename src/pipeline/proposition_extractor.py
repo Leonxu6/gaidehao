@@ -46,9 +46,6 @@ class ExtractionResult:
     model_used: str
 
 
-def _is_chinese(text: str) -> bool:
-    """Proxy kept for backward compatibility — prefer src.utils.is_chinese."""
-    return is_chinese(text)
 
 
 class PropositionExtractor:
@@ -91,7 +88,7 @@ class PropositionExtractor:
 
         system_prompt = (
             "你是一个专业的文本分析助手，擅长提取文章中的核心命题。请严格按照JSON格式输出。"
-            if _is_chinese(text)
+            if is_chinese(text)
             else "You are a professional text analysis assistant specialised in "
             "extracting core propositions from text. Respond with valid JSON only."
         )
@@ -125,7 +122,7 @@ class PropositionExtractor:
         Build the extraction prompt, choosing Chinese or English wording
         based on the dominant language of *text*.
         """
-        if _is_chinese(text):
+        if is_chinese(text):
             return self._build_chinese_prompt(text)
         return self._build_english_prompt(text)
 

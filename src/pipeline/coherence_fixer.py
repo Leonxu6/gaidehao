@@ -29,6 +29,7 @@ from src.pipeline.quality_controller import QualityController, QualityReport
 from src.pipeline.rewriter import ProbabilisticRewriter
 from src.pipeline.semantic_anchor import SemanticAnchor
 from src.pipeline.semantic_validator import SemanticValidator, ValidationResult
+from src.utils import split_paragraphs
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +102,7 @@ class CoherenceFixer:
         -------
         str  The (potentially repaired) text.
         """
-        paragraphs = self._split_paragraphs(text)
+        paragraphs = split_paragraphs(text)
 
         if len(paragraphs) <= 1:
             # Single paragraph — nothing to check.
@@ -180,29 +181,6 @@ class CoherenceFixer:
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
-
-    def _split_paragraphs(self, text: str) -> list[str]:
-        """
-        Split *text* into non-empty paragraphs.
-
-        Prefers double-newline (blank-line) splitting; falls back to
-        single-newline splitting if double-newline yields only one segment.
-        """
-        # Try double-newline first
-        double_split = [s.strip() for s in re.split(r"\n\s*\n", text)]
-        double_split = [s for s in double_split if s]
-        if len(double_split) >= 2:
-            return double_split
-
-        # Fallback: single newline
-        single_split = [s.strip() for s in text.split("\n")]
-        single_split = [s for s in single_split if s]
-        if single_split:
-            return single_split
-
-        # Last resort: whole text
-        stripped = text.strip()
-        return [stripped] if stripped else []
 
     @staticmethod
     def _starts_with_contrast(para: str) -> bool:

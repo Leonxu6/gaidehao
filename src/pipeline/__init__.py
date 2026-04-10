@@ -303,18 +303,29 @@ class ScholAIPipeline:
             final_quality_score=final_quality_score,
         )
 
+# Re-export commonly used types so callers can do "from src.pipeline import Proposition"
+from src.pipeline.proposition_extractor import ExtractionResult, Proposition  # noqa: E402
 
 __all__ = [
+    # proposition_extractor
     "PropositionExtractor",
+    "Proposition",
+    "ExtractionResult",
+    # semantic_anchor
     "SemanticAnchorBuilder",
     "SemanticAnchor",
+    # semantic_validator
     "SemanticValidator",
     "ValidationResult",
+    # rewriter
     "ProbabilisticRewriter",
+    # quality_controller
     "QualityController",
     "QualityReport",
+    # coherence_fixer
     "CoherenceFixer",
     "RetryOrchestrator",
+    # pipeline
     "ScholAIPipeline",
     "PipelineConfig",
     "PipelineResult",

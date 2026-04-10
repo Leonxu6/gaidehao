@@ -361,8 +361,12 @@ class SemanticValidator:
             self._nli_model = AutoModelForSequenceClassification.from_pretrained(
                 self._nli_model_name
             )
+            # Move model to GPU/MPS when available for faster inference; CPU fallback
+            # is safe and works correctly even when no accelerator is present.
+            self._device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
+            self._nli_model = self._nli_model.to(self._device)
             self._nli_model.eval()
-            logger.info("NLI model loaded.")
+            logger.info("NLI model loaded on %s.", self._device)
 
         # Batch-tokenise all (premise, hypothesis) pairs
         inputs = self._nli_tokenizer(
@@ -374,6 +378,7 @@ class SemanticValidator:
             max_length=512,
         )
 
+        inputs = {k: v.to(self._device) for k, v in inputs.items()}
         with torch.no_grad():
             logits = self._nli_model(**inputs).logits  # shape: (batch, 3)
 

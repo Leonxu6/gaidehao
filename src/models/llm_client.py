@@ -16,15 +16,15 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Generator, Optional
+from collections.abc import Generator
 
 import openai
 from tenacity import (
+    before_sleep_log,
     retry,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-    before_sleep_log,
 )
 
 from src.config import LLMConfig
@@ -66,7 +66,7 @@ class LLMClient:
         (requires DEEPSEEK_API_KEY in the environment).
     """
 
-    def __init__(self, config: Optional[LLMConfig] = None) -> None:
+    def __init__(self, config: LLMConfig | None = None) -> None:
         self.cfg = config or LLMConfig()
         self._client = openai.OpenAI(
             api_key=self.cfg.api_key,
@@ -84,8 +84,8 @@ class LLMClient:
         self,
         prompt: str,
         system_prompt: str = "You are a helpful assistant.",
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ) -> str:
         """
         Send a completion request and return the assistant's reply as a string.
@@ -176,9 +176,12 @@ class LLMClient:
         normalised = cleaned
         # Full-width / curly quotes → ASCII
         for bad, good in [
-            ("\u201c", '"'), ("\u201d", '"'),  # "" → ""
-            ("\u2018", "'"), ("\u2019", "'"),  # '' → ''
-            ("\uff1a", ":"), ("\uff0c", ","),  # ：， → :,
+            ("\u201c", '"'),
+            ("\u201d", '"'),  # "" → ""
+            ("\u2018", "'"),
+            ("\u2019", "'"),  # '' → ''
+            ("\uff1a", ":"),
+            ("\uff0c", ","),  # ：， → :,
         ]:
             normalised = normalised.replace(bad, good)
         # Trailing commas before ] or }
@@ -203,9 +206,9 @@ class LLMClient:
         for source in (normalised, raw):
             arr_match = _re.search(r'"propositions"\s*:\s*\[', source)
             if arr_match:
-                after_bracket = source[arr_match.end():]
+                after_bracket = source[arr_match.end() :]
                 items = []
-                for item_match in _re.finditer(r'\{[^{}]+\}', after_bracket):
+                for item_match in _re.finditer(r"\{[^{}]+\}", after_bracket):
                     try:
                         obj = json.loads(item_match.group())
                         if isinstance(obj, dict) and "text" in obj:
@@ -214,19 +217,22 @@ class LLMClient:
                         pass
                 if items:
                     logger.warning(
-                        "Strategy 5: recovered %d proposition(s) via item-level extraction.", len(items)
+                        "Strategy 5: recovered %d proposition(s) via item-level extraction.",
+                        len(items),
                     )
                     return {"propositions": items}
 
-        logger.error("All JSON parse strategies failed. Raw response (first 300 chars): %r", raw[:300])
+        logger.error(
+            "All JSON parse strategies failed. Raw response (first 300 chars): %r", raw[:300]
+        )
         raise json.JSONDecodeError("Could not parse LLM response as JSON", raw, 0)
 
     def generate_stream(
         self,
         prompt: str,
         system_prompt: str = "You are a helpful assistant.",
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ) -> Generator[str, None, None]:
         """
         Streaming completion — yields text delta chunks as they arrive.
@@ -266,8 +272,8 @@ class LLMClient:
         self,
         prompt: str,
         system_prompt: str,
-        temperature: Optional[float],
-        max_tokens: Optional[int],
+        temperature: float | None,
+        max_tokens: int | None,
     ) -> str:
         """Single (non-retried) call to the completions endpoint."""
         messages = self._build_messages(system_prompt, prompt)

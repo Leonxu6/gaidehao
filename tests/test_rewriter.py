@@ -17,7 +17,6 @@ import pytest
 # ---------------------------------------------------------------------------
 # API key injection (must happen before any config/client imports)
 # ---------------------------------------------------------------------------
-
 # API key is loaded automatically by tests/conftest.py
 from tests.conftest import get_api_key
 
@@ -50,7 +49,9 @@ ENGLISH_TEXT = (
 )
 
 SAMPLE_PROPOSITIONS = [
-    Proposition(text="气候变化是21世纪最严峻的全球性挑战之一", prop_type="claim", importance="high"),
+    Proposition(
+        text="气候变化是21世纪最严峻的全球性挑战之一", prop_type="claim", importance="high"
+    ),
     Proposition(text="过去100年全球平均气温上升了约1.1摄氏度", prop_type="fact", importance="high"),
     Proposition(text="中国已承诺在2060年前实现碳中和目标", prop_type="fact", importance="high"),
     Proposition(text="碳排放是气候变化的主要驱动力", prop_type="claim", importance="medium"),
@@ -104,9 +105,7 @@ def test_rewrite_returns_rewrite_result(chinese_result):
 def test_rewrite_text_not_empty(chinese_result):
     """rewritten_text must be a non-empty string."""
     assert isinstance(chinese_result.rewritten_text, str)
-    assert chinese_result.rewritten_text.strip() != "", (
-        "rewritten_text must not be empty"
-    )
+    assert chinese_result.rewritten_text.strip() != "", "rewritten_text must not be empty"
 
 
 def test_rewrite_text_different_from_original(chinese_result):

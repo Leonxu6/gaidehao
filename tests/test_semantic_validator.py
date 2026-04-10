@@ -21,17 +21,18 @@ import os
 # Must be set before any src.* import that transitively loads src.config
 # API key is loaded automatically by tests/conftest.py (runs before this module)
 from tests.conftest import get_api_key
+
 os.environ["DEEPSEEK_API_KEY"] = get_api_key()
 
 import pytest
 
 from src.models.embedding_client import EmbeddingClient
-from src.pipeline.semantic_anchor import SemanticAnchorBuilder, SemanticAnchor
 from src.pipeline.proposition_extractor import Proposition
+from src.pipeline.semantic_anchor import SemanticAnchor, SemanticAnchorBuilder
 from src.pipeline.semantic_validator import (
+    PropositionValidationResult,
     SemanticValidator,
     ValidationResult,
-    PropositionValidationResult,
 )
 
 # ---------------------------------------------------------------------------
@@ -114,9 +115,7 @@ def test_validate_returns_validation_result(
 ):
     """validate() must return a ValidationResult instance."""
     result = validator.validate(climate_anchor, SIMILAR_TEXT, TEST_PROPS)
-    assert isinstance(result, ValidationResult), (
-        f"Expected ValidationResult, got {type(result)}"
-    )
+    assert isinstance(result, ValidationResult), f"Expected ValidationResult, got {type(result)}"
 
 
 # ---------------------------------------------------------------------------
@@ -185,18 +184,12 @@ def test_validate_layer2_results_structure(
         assert isinstance(pvr.proposition, Proposition), (
             f"Item {i}: proposition must be a Proposition instance"
         )
-        assert isinstance(pvr.entailment_score, float), (
-            f"Item {i}: entailment_score must be float"
-        )
+        assert isinstance(pvr.entailment_score, float), f"Item {i}: entailment_score must be float"
         assert isinstance(pvr.contradiction_score, float), (
             f"Item {i}: contradiction_score must be float"
         )
-        assert isinstance(pvr.neutral_score, float), (
-            f"Item {i}: neutral_score must be float"
-        )
-        assert isinstance(pvr.status, str), (
-            f"Item {i}: status must be str"
-        )
+        assert isinstance(pvr.neutral_score, float), f"Item {i}: neutral_score must be float"
+        assert isinstance(pvr.status, str), f"Item {i}: status must be str"
 
 
 # ---------------------------------------------------------------------------

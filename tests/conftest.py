@@ -26,6 +26,7 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _DOTENV_PATH = _REPO_ROOT / ".env"
 if _DOTENV_PATH.exists():
     from dotenv import load_dotenv
+
     load_dotenv(dotenv_path=_DOTENV_PATH, override=True)
 
 # Validate that the key is available

@@ -8,12 +8,12 @@ The API key is injected via the autouse fixture below.
 from __future__ import annotations
 
 import os
+
 import pytest
 
 # ---------------------------------------------------------------------------
 # Inject the API key before any config/client imports
 # ---------------------------------------------------------------------------
-
 # API key is loaded automatically by tests/conftest.py
 from tests.conftest import get_api_key
 
@@ -109,8 +109,8 @@ def test_extract_proposition_has_required_fields(chinese_result):
     """Every Proposition must expose text, prop_type, and importance."""
     for prop in chinese_result.propositions:
         assert isinstance(prop, Proposition)
-        assert hasattr(prop, "text"),       "Proposition missing 'text'"
-        assert hasattr(prop, "prop_type"),  "Proposition missing 'prop_type'"
+        assert hasattr(prop, "text"), "Proposition missing 'text'"
+        assert hasattr(prop, "prop_type"), "Proposition missing 'prop_type'"
         assert hasattr(prop, "importance"), "Proposition missing 'importance'"
 
 
@@ -149,9 +149,7 @@ def test_extract_no_empty_propositions(chinese_result, english_result):
     """No proposition should have an empty or whitespace-only text field."""
     for result in (chinese_result, english_result):
         for prop in result.propositions:
-            assert prop.text.strip() != "", (
-                "Found proposition with empty text field"
-            )
+            assert prop.text.strip() != "", "Found proposition with empty text field"
 
 
 def test_extract_short_text(short_result):

@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import re
 
-
 # ---------------------------------------------------------------------------
 # Normalisation
 # ---------------------------------------------------------------------------
+
 
 def normalize(text: str) -> str:
     """
@@ -92,14 +92,14 @@ def split_paragraphs(text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 _CJK_RANGE = (
-    r"\u4e00-\u9fff"   # CJK Unified Ideographs (core block)
-    r"\u3400-\u4dbf"   # CJK Extension A
+    r"\u4e00-\u9fff"  # CJK Unified Ideographs (core block)
+    r"\u3400-\u4dbf"  # CJK Extension A
     r"\U00020000-\U0002a6df"  # CJK Extension B (surrogate pair range)
 )
 
 _CJK_TOKEN_RE = re.compile(f"[{_CJK_RANGE}]+")
 _PUNCT_WHITESPACE_RE = re.compile(
-    rf"[\s，。！？、；：\u201c\u201d\u2018\u2019（）【】《》〈〉\[\](),.!?;:\"'\-\u2014\u2026·]+"
+    r"[\s，。！？、；：\u201c\u201d\u2018\u2019（）【】《》〈〉\[\](),.!?;:\"'\-\u2014\u2026·]+"
 )
 
 
@@ -133,6 +133,7 @@ def tokenize(text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 # Language detection
 # ---------------------------------------------------------------------------
+
 
 def chinese_ratio(text: str) -> float:
     """Return the fraction of characters in *text* that are CJK ideographs."""

@@ -21,10 +21,8 @@ from __future__ import annotations
 
 import logging
 import random
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
-from src.config import LLMConfig
 from src.models.llm_client import LLMClient
 from src.pipeline.proposition_extractor import Proposition, _is_chinese
 
@@ -33,6 +31,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RewriteConfig:
@@ -58,14 +57,15 @@ class RewriteResult:
 
     rewritten_text: str
     original_text: str
-    propositions_included: list[str]   # proposition texts passed to the prompt
+    propositions_included: list[str]  # proposition texts passed to the prompt
     config_used: RewriteConfig
-    attempt_number: int                # 1 / 2 / 3
+    attempt_number: int  # 1 / 2 / 3
 
 
 # ---------------------------------------------------------------------------
 # Main class
 # ---------------------------------------------------------------------------
+
 
 class ProbabilisticRewriter:
     """
@@ -82,7 +82,7 @@ class ProbabilisticRewriter:
     def __init__(
         self,
         llm_client: LLMClient,
-        config: Optional[RewriteConfig] = None,
+        config: RewriteConfig | None = None,
     ) -> None:
         self._client = llm_client
         self._config = config or RewriteConfig()
@@ -94,7 +94,7 @@ class ProbabilisticRewriter:
     def rewrite(
         self,
         text: str,
-        propositions: Optional[list[Proposition]] = None,
+        propositions: list[Proposition] | None = None,
         attempt: int = 1,
     ) -> RewriteResult:
         """

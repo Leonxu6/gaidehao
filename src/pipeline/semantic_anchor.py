@@ -19,9 +19,9 @@ Design notes
 
 from __future__ import annotations
 
-import re
 import logging
-from dataclasses import dataclass, field
+import re
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -34,14 +34,15 @@ logger = logging.getLogger(__name__)
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SemanticAnchor:
     """Holds the embedding artefacts for one original document."""
 
-    embedding: np.ndarray               # Full-document embedding, shape (D,)
-    original_text: str                  # Verbatim original text
-    chunk_embeddings: list[np.ndarray]   # Per-paragraph embeddings, each shape (D,)
-    chunks: list[str]                   # Corresponding paragraph texts
+    embedding: np.ndarray  # Full-document embedding, shape (D,)
+    original_text: str  # Verbatim original text
+    chunk_embeddings: list[np.ndarray]  # Per-paragraph embeddings, each shape (D,)
+    chunks: list[str]  # Corresponding paragraph texts
     similarity_threshold: float = 0.80  # Coarse-screening pass/fail boundary
 
     def __repr__(self) -> str:
@@ -58,6 +59,7 @@ class SemanticAnchor:
 # ---------------------------------------------------------------------------
 # Builder
 # ---------------------------------------------------------------------------
+
 
 class SemanticAnchorBuilder:
     """
@@ -203,8 +205,6 @@ class SemanticAnchorBuilder:
 
         import numpy as np
 
-        import numpy as np
-
         rewritten_chunks = self._split_paragraphs(rewritten_text)
         if not rewritten_chunks:
             # Treat the whole rewritten text as one chunk
@@ -214,13 +214,11 @@ class SemanticAnchorBuilder:
 
         # Vectorised similarity: (n, D) @ (D, m).T = (n, m)  — one matmul
         # instead of the previous O(n*m) nested loop.
-        n = len(anchor.chunk_embeddings)
-        m = len(rewritten_chunks)
         orig_matrix = np.stack(anchor.chunk_embeddings)  # (n, D)
-        sim_matrix = orig_matrix @ rewritten_matrix.T    # (n, m)
+        sim_matrix = orig_matrix @ rewritten_matrix.T  # (n, m)
 
         # Best similarity per original chunk (row-wise max)
-        best_sims = sim_matrix.max(axis=1)              # (n,)
+        best_sims = sim_matrix.max(axis=1)  # (n,)
 
         results: list[dict] = [
             {

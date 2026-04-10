@@ -27,20 +27,20 @@ DEEPSEEK_API_KEY = get_api_key()
 # Imports
 # ---------------------------------------------------------------------------
 
-from src.config import LLMConfig, EmbeddingConfig
-from src.models.llm_client import LLMClient
+from src.config import EmbeddingConfig, LLMConfig
 from src.models.embedding_client import EmbeddingClient
+from src.models.llm_client import LLMClient
+from src.pipeline.coherence_fixer import (
+    AttemptRecord,
+    CoherenceFixer,
+    OrchestratorResult,
+    RetryOrchestrator,
+)
+from src.pipeline.proposition_extractor import Proposition
+from src.pipeline.quality_controller import QualityController
 from src.pipeline.rewriter import ProbabilisticRewriter
 from src.pipeline.semantic_anchor import SemanticAnchorBuilder
 from src.pipeline.semantic_validator import SemanticValidator
-from src.pipeline.quality_controller import QualityController
-from src.pipeline.proposition_extractor import Proposition
-from src.pipeline.coherence_fixer import (
-    CoherenceFixer,
-    RetryOrchestrator,
-    OrchestratorResult,
-    AttemptRecord,
-)
 
 # ---------------------------------------------------------------------------
 # Shared test data

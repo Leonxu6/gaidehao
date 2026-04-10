@@ -19,6 +19,7 @@ import os
 # Must be set before any src.* import that transitively loads src.config
 # API key is loaded automatically by tests/conftest.py (runs before this module)
 from tests.conftest import get_api_key
+
 os.environ["DEEPSEEK_API_KEY"] = get_api_key()
 
 import numpy as np
@@ -48,6 +49,7 @@ SIMILAR_TEXT = """气候变化是当前全球面临的最严峻挑战。IPCC报�
 # Session-scoped fixtures (load the model only once)
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="session")
 def embedding_client() -> EmbeddingClient:
     """One EmbeddingClient for the whole test session."""
@@ -70,6 +72,7 @@ def multi_para_anchor(builder: SemanticAnchorBuilder) -> SemanticAnchor:
 # Test 1: build() returns SemanticAnchor
 # ---------------------------------------------------------------------------
 
+
 def test_build_returns_semantic_anchor(multi_para_anchor: SemanticAnchor):
     """build() must return a SemanticAnchor instance."""
     assert isinstance(multi_para_anchor, SemanticAnchor), (
@@ -81,19 +84,19 @@ def test_build_returns_semantic_anchor(multi_para_anchor: SemanticAnchor):
 # Test 2: embedding is a 1-D ndarray with dim 1024
 # ---------------------------------------------------------------------------
 
+
 def test_anchor_embedding_shape(multi_para_anchor: SemanticAnchor):
     """anchor.embedding must be a 1-D ndarray with shape[0] == 1024."""
     emb = multi_para_anchor.embedding
     assert isinstance(emb, np.ndarray), "embedding must be np.ndarray"
     assert emb.ndim == 1, f"Expected 1-D embedding, got shape {emb.shape}"
-    assert emb.shape[0] == 1024, (
-        f"BGE-M3 output dim must be 1024, got {emb.shape[0]}"
-    )
+    assert emb.shape[0] == 1024, f"BGE-M3 output dim must be 1024, got {emb.shape[0]}"
 
 
 # ---------------------------------------------------------------------------
 # Test 3: original_text is preserved verbatim
 # ---------------------------------------------------------------------------
+
 
 def test_anchor_original_text_preserved(builder: SemanticAnchorBuilder):
     """anchor.original_text must equal the text passed to build()."""
@@ -107,6 +110,7 @@ def test_anchor_original_text_preserved(builder: SemanticAnchorBuilder):
 # ---------------------------------------------------------------------------
 # Test 4: multi-paragraph text produces >= 2 chunk embeddings
 # ---------------------------------------------------------------------------
+
 
 def test_anchor_has_chunks(multi_para_anchor: SemanticAnchor):
     """Multi-paragraph text (split on \\n\\n) must yield >= 2 chunk_embeddings."""
@@ -122,6 +126,7 @@ def test_anchor_has_chunks(multi_para_anchor: SemanticAnchor):
 # Test 5: same text → similarity >= 0.99, passed=True
 # ---------------------------------------------------------------------------
 
+
 def test_check_similarity_same_text(builder: SemanticAnchorBuilder):
     """Comparing original text with itself should yield similarity >= 0.99."""
     anchor = builder.build(MULTI_PARA_TEXT)
@@ -136,6 +141,7 @@ def test_check_similarity_same_text(builder: SemanticAnchorBuilder):
 # Test 6: completely unrelated text → passed=False (similarity < 0.80)
 # ---------------------------------------------------------------------------
 
+
 def test_check_similarity_different_text(builder: SemanticAnchorBuilder):
     """Comparing climate text with stock-market text should fail the 0.80 threshold."""
     anchor = builder.build(MULTI_PARA_TEXT)
@@ -143,14 +149,13 @@ def test_check_similarity_different_text(builder: SemanticAnchorBuilder):
     assert result["similarity"] < 0.80, (
         f"Unrelated text similarity should be < 0.80, got {result['similarity']:.4f}"
     )
-    assert result["passed"] is False, (
-        "Unrelated text must not pass the coarse semantic threshold"
-    )
+    assert result["passed"] is False, "Unrelated text must not pass the coarse semantic threshold"
 
 
 # ---------------------------------------------------------------------------
 # Test 7: check_similarity returns dict with required keys
 # ---------------------------------------------------------------------------
+
 
 def test_check_similarity_returns_dict_keys(builder: SemanticAnchorBuilder):
     """check_similarity() must return a dict with keys: similarity, passed, reason."""
@@ -167,6 +172,7 @@ def test_check_similarity_returns_dict_keys(builder: SemanticAnchorBuilder):
 # ---------------------------------------------------------------------------
 # Test 8: check_chunk_similarity returns correct structure
 # ---------------------------------------------------------------------------
+
 
 def test_check_chunk_similarity_structure(
     builder: SemanticAnchorBuilder,
@@ -195,6 +201,7 @@ def test_check_chunk_similarity_structure(
 # ---------------------------------------------------------------------------
 # Test 9: custom threshold=0.95 — similar (but not identical) text must fail
 # ---------------------------------------------------------------------------
+
 
 def test_similarity_threshold_custom(embedding_client: EmbeddingClient):
     """

@@ -14,10 +14,10 @@ import pytest
 from src.config import EmbeddingConfig
 from src.models.embedding_client import EmbeddingClient
 
-
 # ---------------------------------------------------------------------------
 # Shared fixture: one client instance per test session (model is expensive to load)
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def client() -> EmbeddingClient:
@@ -30,13 +30,12 @@ def client() -> EmbeddingClient:
 # Test: lazy loading — model should NOT be loaded before first encode() call
 # ---------------------------------------------------------------------------
 
+
 def test_lazy_loading_not_loaded_on_init():
     """Model should not be loaded at construction time."""
     cfg = EmbeddingConfig(model_name="BAAI/bge-m3", device="cpu")
     fresh_client = EmbeddingClient(config=cfg)
-    assert not fresh_client.is_loaded, (
-        "Model should not be loaded at __init__ time (lazy loading)"
-    )
+    assert not fresh_client.is_loaded, "Model should not be loaded at __init__ time (lazy loading)"
 
 
 def test_lazy_loading_loaded_after_encode(client: EmbeddingClient):
@@ -48,6 +47,7 @@ def test_lazy_loading_loaded_after_encode(client: EmbeddingClient):
 # ---------------------------------------------------------------------------
 # Test: encode() returns correct shape and dtype
 # ---------------------------------------------------------------------------
+
 
 def test_encode_returns_ndarray(client: EmbeddingClient):
     """encode() should return a numpy ndarray."""
@@ -64,9 +64,7 @@ def test_encode_returns_1d_vector(client: EmbeddingClient):
 def test_encode_correct_dimension(client: EmbeddingClient):
     """BGE-M3 produces 1024-dimensional embeddings."""
     emb = client.encode("Hello world")
-    assert emb.shape[0] == 1024, (
-        f"Expected embedding dim 1024, got {emb.shape[0]}"
-    )
+    assert emb.shape[0] == 1024, f"Expected embedding dim 1024, got {emb.shape[0]}"
 
 
 def test_encode_dtype_float32(client: EmbeddingClient):
@@ -79,13 +77,12 @@ def test_encode_dtype_float32(client: EmbeddingClient):
 # Test: encode_batch() returns correct shape
 # ---------------------------------------------------------------------------
 
+
 def test_encode_batch_shape(client: EmbeddingClient):
     """encode_batch() should return shape (N, embedding_dim)."""
     texts = ["First sentence.", "Second sentence.", "Third sentence."]
     embs = client.encode_batch(texts)
-    assert embs.shape == (3, 1024), (
-        f"Expected shape (3, 1024), got {embs.shape}"
-    )
+    assert embs.shape == (3, 1024), f"Expected shape (3, 1024), got {embs.shape}"
 
 
 def test_encode_batch_single_item(client: EmbeddingClient):
@@ -97,6 +94,7 @@ def test_encode_batch_single_item(client: EmbeddingClient):
 # ---------------------------------------------------------------------------
 # Test: cosine_similarity
 # ---------------------------------------------------------------------------
+
 
 def test_cosine_similarity_identical_text(client: EmbeddingClient):
     """cosine_similarity of a text with itself should be ≈ 1.0."""
@@ -142,9 +140,12 @@ def test_cosine_similarity_opposite_texts(client: EmbeddingClient):
 # Test: encode and encode_batch give consistent results
 # ---------------------------------------------------------------------------
 
+
 def test_encode_consistent_with_encode_batch(client: EmbeddingClient):
     """encode() and encode_batch() should return the same vector for the same text."""
     text = "Consistency check for single vs batch."
     single = client.encode(text)
     batch = client.encode_batch([text])[0]
-    np.testing.assert_allclose(single, batch, atol=1e-5, err_msg="encode and encode_batch results differ")
+    np.testing.assert_allclose(
+        single, batch, atol=1e-5, err_msg="encode and encode_batch results differ"
+    )

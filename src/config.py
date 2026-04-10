@@ -5,6 +5,7 @@ Reads settings from environment variables (with .env file support via python-dot
 
 import os
 from dataclasses import dataclass, field
+
 from dotenv import load_dotenv
 
 # Load .env file if present (no-op if it doesn't exist)
@@ -26,7 +27,7 @@ class LLMConfig:
     # Mirostat natively.
     temperature: float = 0.9
     top_p: float = 0.85
-    frequency_penalty: float = 0.3   # suppresses repetitive AI patterns
+    frequency_penalty: float = 0.3  # suppresses repetitive AI patterns
     presence_penalty: float = 0.0
 
     # Generation limits
@@ -34,8 +35,8 @@ class LLMConfig:
 
     # Retry / backoff
     max_retries: int = 3
-    retry_min_wait: float = 1.0   # seconds
-    retry_max_wait: float = 8.0   # seconds
+    retry_min_wait: float = 1.0  # seconds
+    retry_max_wait: float = 8.0  # seconds
 
     # Request timeout (seconds)
     timeout: float = 60.0

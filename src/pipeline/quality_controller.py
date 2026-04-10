@@ -18,11 +18,9 @@ import logging
 import math
 import re
 from collections import Counter
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 from src.models.llm_client import LLMClient
-from src.pipeline.proposition_extractor import Proposition
 from src.utils import is_chinese
 
 logger = logging.getLogger(__name__)
@@ -31,16 +29,18 @@ logger = logging.getLogger(__name__)
 # Data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class DetectionMetrics:
     """Track 1: detection-evasion metrics — only answers 'does it look human?'"""
-    ppl_estimate: float          # Unigram-entropy-based PPL approximation
-    burstiness: float            # Sentence-length standard deviation
-    ttr: float                   # Type-Token Ratio
-    ppl_passed: bool             # 25 <= ppl_estimate <= 150
-    burstiness_passed: bool      # burstiness >= 10
-    ttr_passed: bool             # ttr >= 0.45
-    overall_passed: bool         # all three must pass
+
+    ppl_estimate: float  # Unigram-entropy-based PPL approximation
+    burstiness: float  # Sentence-length standard deviation
+    ttr: float  # Type-Token Ratio
+    ppl_passed: bool  # 25 <= ppl_estimate <= 150
+    burstiness_passed: bool  # burstiness >= 10
+    ttr_passed: bool  # ttr >= 0.45
+    overall_passed: bool  # all three must pass
 
     def __repr__(self) -> str:
         return (
@@ -56,15 +56,16 @@ class DetectionMetrics:
 @dataclass
 class QualityMetrics:
     """Track 2: linguistic quality metrics — only answers 'is it well written?'"""
-    rule_issues: list[str]       # Issues found by the rule-based quick scan
+
+    rule_issues: list[str]  # Issues found by the rule-based quick scan
     rule_passed: bool
-    faithfulness: float          # G-Eval dimension: 0-5
-    coherence: float             # G-Eval dimension: 0-5
-    fluency: float               # G-Eval dimension: 0-5
-    readability: float           # G-Eval dimension: 0-5
-    overall_score: float         # 0.35*f + 0.25*c + 0.25*fl + 0.15*r
-    quality_passed: bool         # overall_score >= 3.5
-    needs_regeneration: bool     # overall_score < 3.0
+    faithfulness: float  # G-Eval dimension: 0-5
+    coherence: float  # G-Eval dimension: 0-5
+    fluency: float  # G-Eval dimension: 0-5
+    readability: float  # G-Eval dimension: 0-5
+    overall_score: float  # 0.35*f + 0.25*c + 0.25*fl + 0.15*r
+    quality_passed: bool  # overall_score >= 3.5
+    needs_regeneration: bool  # overall_score < 3.0
 
     def __repr__(self) -> str:
         issues = f", issues={self.rule_issues}" if self.rule_issues else ""
@@ -84,12 +85,7 @@ class QualityReport:
     final_action: str  # "accept" | "retry_detection" | "retry_quality" | "retry_semantic"
 
     def __repr__(self) -> str:
-        return (
-            f"QualityReport("
-            f"action={self.final_action!r}, "
-            f"{self.detection}, {self.quality}"
-            f")"
-        )
+        return f"QualityReport(action={self.final_action!r}, {self.detection}, {self.quality})"
 
 
 # ---------------------------------------------------------------------------
@@ -113,10 +109,7 @@ _GEVAL_PROMPT_ZH = """\
 请按以下JSON格式输出，不要有其他文字：
 {{"faithfulness": 分数, "coherence": 分数, "fluency": 分数, "readability": 分数}}"""
 
-_GEVAL_SYSTEM_ZH = (
-    "你是一个专业的中文写作质量评估员。"
-    "只输出要求的JSON，不要有任何额外文字。"
-)
+_GEVAL_SYSTEM_ZH = "你是一个专业的中文写作质量评估员。只输出要求的JSON，不要有任何额外文字。"
 
 _GEVAL_PROMPT_EN = """\
 You are a professional English writing quality evaluator. Please score the following text.
@@ -144,6 +137,7 @@ _GEVAL_SYSTEM_EN = (
 # ---------------------------------------------------------------------------
 # QualityController
 # ---------------------------------------------------------------------------
+
 
 class QualityController:
     """
@@ -223,10 +217,8 @@ class QualityController:
             return 1.0
         counts = Counter(tokens)
         total = len(tokens)
-        entropy = -sum(
-            (c / total) * math.log2(c / total) for c in counts.values()
-        )
-        return 2 ** entropy
+        entropy = -sum((c / total) * math.log2(c / total) for c in counts.values())
+        return 2**entropy
 
     def _compute_burstiness(self, text: str) -> float:
         """
@@ -240,7 +232,7 @@ class QualityController:
             return 0.0
         lengths = [len(s) for s in sentences]
         mean_len = sum(lengths) / len(lengths)
-        variance = sum((l - mean_len) ** 2 for l in lengths) / len(lengths)
+        variance = sum((length_val - mean_len) ** 2 for length_val in lengths) / len(lengths)
         return math.sqrt(variance)
 
     def _compute_ttr(self, text: str) -> float:
@@ -303,12 +295,7 @@ class QualityController:
         fluency = geval.get("fluency", 3.0)
         readability = geval.get("readability", 3.0)
 
-        overall = (
-            0.35 * faithfulness
-            + 0.25 * coherence
-            + 0.25 * fluency
-            + 0.15 * readability
-        )
+        overall = 0.35 * faithfulness + 0.25 * coherence + 0.25 * fluency + 0.15 * readability
 
         return QualityMetrics(
             rule_issues=rule_issues,
@@ -373,9 +360,7 @@ class QualityController:
         is_zh = is_chinese(text)
         system_prompt = _GEVAL_SYSTEM_ZH if is_zh else _GEVAL_SYSTEM_EN
         user_prompt = (
-            _GEVAL_PROMPT_ZH.format(text=text)
-            if is_zh
-            else _GEVAL_PROMPT_EN.format(text=text)
+            _GEVAL_PROMPT_ZH.format(text=text) if is_zh else _GEVAL_PROMPT_EN.format(text=text)
         )
         try:
             response = self._llm.generate(

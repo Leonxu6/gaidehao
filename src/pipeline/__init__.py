@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 # Configuration dataclass
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PipelineConfig:
     """
@@ -51,6 +52,7 @@ class PipelineConfig:
 # ---------------------------------------------------------------------------
 # Result dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PipelineResult:
@@ -80,13 +82,14 @@ class PipelineResult:
 
     # Optional debug / verbose fields
     propositions_count: int = 0
-    layer1_similarity: Optional[float] = None
-    final_quality_score: Optional[float] = None
+    layer1_similarity: float | None = None
+    final_quality_score: float | None = None
 
 
 # ---------------------------------------------------------------------------
 # Pipeline
 # ---------------------------------------------------------------------------
+
 
 class ScholAIPipeline:
     """
@@ -121,7 +124,7 @@ class ScholAIPipeline:
     # ------------------------------------------------------------------
 
     @classmethod
-    def from_config(cls, config: PipelineConfig) -> "ScholAIPipeline":
+    def from_config(cls, config: PipelineConfig) -> ScholAIPipeline:
         """
         Build all pipeline components from a PipelineConfig and return a
         fully wired ScholAIPipeline instance.
@@ -141,15 +144,15 @@ class ScholAIPipeline:
         """
         # Lazy imports keep startup fast and allow the module to be imported
         # in environments where not all dependencies are installed.
-        from src.config import LLMConfig, EmbeddingConfig
-        from src.models.llm_client import LLMClient
+        from src.config import EmbeddingConfig, LLMConfig
         from src.models.embedding_client import EmbeddingClient
-        from src.pipeline.proposition_extractor import PropositionExtractor
-        from src.pipeline.semantic_anchor import SemanticAnchorBuilder
-        from src.pipeline.rewriter import ProbabilisticRewriter
-        from src.pipeline.semantic_validator import SemanticValidator
-        from src.pipeline.quality_controller import QualityController
+        from src.models.llm_client import LLMClient
         from src.pipeline.coherence_fixer import CoherenceFixer, RetryOrchestrator
+        from src.pipeline.proposition_extractor import PropositionExtractor
+        from src.pipeline.quality_controller import QualityController
+        from src.pipeline.rewriter import ProbabilisticRewriter
+        from src.pipeline.semantic_anchor import SemanticAnchorBuilder
+        from src.pipeline.semantic_validator import SemanticValidator
 
         # 1. LLM client
         llm_config = LLMConfig(api_key=config.deepseek_api_key)
@@ -275,8 +278,8 @@ class ScholAIPipeline:
         # ------------------------------------------------------------------
         # Step 4: Collect metadata from the last attempt for the result
         # ------------------------------------------------------------------
-        layer1_similarity: Optional[float] = None
-        final_quality_score: Optional[float] = None
+        layer1_similarity: float | None = None
+        final_quality_score: float | None = None
 
         if orch_result.attempts:
             last_attempt = orch_result.attempts[-1]
@@ -316,4 +319,3 @@ __all__ = [
     "PipelineConfig",
     "PipelineResult",
 ]
-

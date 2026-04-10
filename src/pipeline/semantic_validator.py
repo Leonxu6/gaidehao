@@ -30,8 +30,7 @@ Design notes
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 from src.pipeline.proposition_extractor import Proposition
 from src.pipeline.semantic_anchor import SemanticAnchor, SemanticAnchorBuilder
@@ -43,6 +42,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PropositionValidationResult:
@@ -70,14 +70,14 @@ class ValidationResult:
     """Aggregated result of all three validation layers."""
 
     passed: bool
-    failure_reason: str               # "" when passed=True
+    failure_reason: str  # "" when passed=True
     layer1_similarity: float
     layer1_passed: bool
     layer2_results: list[PropositionValidationResult]
     contradicted_propositions: list[Proposition]
     missing_propositions: list[Proposition]
-    layer3_bertscore: Optional[float]  # BERTScore F1; None if unavailable
-    rewrite_action: str               # "accept" | "retry_semantic"
+    layer3_bertscore: float | None  # BERTScore F1; None if unavailable
+    rewrite_action: str  # "accept" | "retry_semantic"
 
     def __repr__(self) -> str:
         return (
@@ -94,6 +94,7 @@ class ValidationResult:
 # ---------------------------------------------------------------------------
 # Main validator
 # ---------------------------------------------------------------------------
+
 
 class SemanticValidator:
     """
@@ -144,9 +145,9 @@ class SemanticValidator:
         # considered "preserved"; low-importance ones are more forgiving.
         # Format: importance -> (entailment_threshold, contradiction_threshold)
         self._importance_thresholds: dict[str, tuple[float, float]] = {
-            "high":   (0.85, 0.65),
+            "high": (0.85, 0.65),
             "medium": (0.75, 0.70),
-            "low":    (0.65, 0.75),
+            "low": (0.65, 0.75),
         }
 
         # Lazy-loaded NLI artefacts
@@ -188,9 +189,7 @@ class SemanticValidator:
         contradicted: list[Proposition] = [
             r.proposition for r in l2_results if r.status == "contradicted"
         ]
-        missing: list[Proposition] = [
-            r.proposition for r in l2_results if r.status == "missing"
-        ]
+        missing: list[Proposition] = [r.proposition for r in l2_results if r.status == "missing"]
 
         # ---- Layer 3 -------------------------------------------------------
         l3_score = self._layer3_check(anchor.original_text, rewritten_text)
@@ -203,9 +202,7 @@ class SemanticValidator:
                 f"{self._layer1_threshold:.2f}"
             )
         if contradicted:
-            failure_reasons.append(
-                f"Layer 2: {len(contradicted)} proposition(s) contradicted"
-            )
+            failure_reasons.append(f"Layer 2: {len(contradicted)} proposition(s) contradicted")
         if len(missing) > self._max_missing_allowed:
             failure_reasons.append(
                 f"Layer 2: {len(missing)} proposition(s) missing "
@@ -279,7 +276,7 @@ class SemanticValidator:
         all_scores = self._nli_check_batch(rewritten_text, hypotheses)
 
         results: list[PropositionValidationResult] = []
-        for prop, scores in zip(propositions, all_scores):
+        for prop, scores in zip(propositions, all_scores, strict=True):
             entailment = scores.get("entailment", 0.0)
             contradiction = scores.get("contradiction", 0.0)
             neutral = scores.get("neutral", 0.0)
@@ -301,8 +298,10 @@ class SemanticValidator:
                 "contradiction=%.3f(>=%.2f) status=%s",
                 prop.text[:60],
                 prop.importance,
-                entailment, ent_t,
-                contradiction, con_t,
+                entailment,
+                ent_t,
+                contradiction,
+                con_t,
                 status,
             )
 
@@ -328,9 +327,7 @@ class SemanticValidator:
             (self._entailment_threshold, self._contradiction_threshold),
         )
 
-    def _nli_check_batch(
-        self, premise: str, hypotheses: list[str]
-    ) -> list[dict]:
+    def _nli_check_batch(self, premise: str, hypotheses: list[str]) -> list[dict]:
         """
         Run NLI inference for one premise against multiple hypotheses in a single
         forward pass (batch processing).
@@ -353,7 +350,7 @@ class SemanticValidator:
             "neutral" (float each, summing to ≈ 1.0).
         """
         import torch
-        from transformers import AutoTokenizer, AutoModelForSequenceClassification
+        from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
         if self._nli_tokenizer is None or self._nli_model is None:
             logger.info(
@@ -386,11 +383,13 @@ class SemanticValidator:
         results: list[dict] = []
         for row in probs:
             scores = {id2label[i].lower(): row[i].item() for i in range(len(id2label))}
-            results.append({
-                "entailment": scores.get("entailment", 0.0),
-                "contradiction": scores.get("contradiction", 0.0),
-                "neutral": scores.get("neutral", 0.0),
-            })
+            results.append(
+                {
+                    "entailment": scores.get("entailment", 0.0),
+                    "contradiction": scores.get("contradiction", 0.0),
+                    "neutral": scores.get("neutral", 0.0),
+                }
+            )
         return results
 
     def _nli_check(self, premise: str, hypothesis: str) -> dict:
@@ -405,7 +404,7 @@ class SemanticValidator:
         self,
         original_text: str,
         rewritten_text: str,
-    ) -> Optional[float]:
+    ) -> float | None:
         """
         Layer 3: BERTScore word-coverage auxiliary check (F1 only).
 

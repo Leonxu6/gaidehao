@@ -28,8 +28,8 @@ _VALID_IMPORTANCES = {"high", "medium", "low"}
 
 @dataclass
 class Proposition:
-    text: str        # verbatim proposition text
-    prop_type: str   # "claim" | "entity" | "fact"
+    text: str  # verbatim proposition text
+    prop_type: str  # "claim" | "entity" | "fact"
     importance: str  # "high" | "medium" | "low"
 
     def __repr__(self) -> str:
@@ -93,7 +93,7 @@ class PropositionExtractor:
             "你是一个专业的文本分析助手，擅长提取文章中的核心命题。请严格按照JSON格式输出。"
             if _is_chinese(text)
             else "You are a professional text analysis assistant specialised in "
-                 "extracting core propositions from text. Respond with valid JSON only."
+            "extracting core propositions from text. Respond with valid JSON only."
         )
 
         raw: dict = {}
@@ -225,9 +225,7 @@ Text to analyse:
             # Validate / coerce importance
             importance = str(item.get("importance", "")).lower().strip()
             if importance not in _VALID_IMPORTANCES:
-                logger.debug(
-                    "Unknown importance %r — defaulting to 'medium'", importance
-                )
+                logger.debug("Unknown importance %r — defaulting to 'medium'", importance)
                 importance = "medium"
 
             result.append(Proposition(text=text, prop_type=prop_type, importance=importance))

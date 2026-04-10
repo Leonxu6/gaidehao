@@ -15,7 +15,6 @@ Design notes
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
 
@@ -34,7 +33,7 @@ class EmbeddingClient:
         Configuration object. If None, defaults are used (BAAI/bge-m3, CPU).
     """
 
-    def __init__(self, config: Optional[EmbeddingConfig] = None) -> None:
+    def __init__(self, config: EmbeddingConfig | None = None) -> None:
         self.cfg = config or EmbeddingConfig()
         self._model = None  # lazy-loaded on first call
 

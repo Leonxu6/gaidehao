@@ -22,14 +22,13 @@ from __future__ import annotations
 
 import logging
 import re
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 from src.pipeline.proposition_extractor import Proposition
-from src.pipeline.rewriter import ProbabilisticRewriter
-from src.pipeline.semantic_anchor import SemanticAnchor, SemanticAnchorBuilder
-from src.pipeline.semantic_validator import SemanticValidator, ValidationResult
 from src.pipeline.quality_controller import QualityController, QualityReport
+from src.pipeline.rewriter import ProbabilisticRewriter
+from src.pipeline.semantic_anchor import SemanticAnchor
+from src.pipeline.semantic_validator import SemanticValidator, ValidationResult
 
 logger = logging.getLogger(__name__)
 
@@ -44,14 +43,20 @@ _CONTRAST_WORDS_EN = ("However", "But", "On the contrary", "Nevertheless", "Yet"
 # contrast, making the contrast opener in the next paragraph coherent.
 _CONTRAST_SETUP_ZH = ("虽然", "尽管", "固然", "尽管如此", "即使", "一方面")
 _CONTRAST_SETUP_EN = (
-    "although", "though", "even though", "while", "whereas",
-    "on one hand", "on the one hand",
+    "although",
+    "though",
+    "even though",
+    "while",
+    "whereas",
+    "on one hand",
+    "on the one hand",
 )
 
 
 # ---------------------------------------------------------------------------
 # CoherenceFixer
 # ---------------------------------------------------------------------------
+
 
 class CoherenceFixer:
     """
@@ -105,7 +110,7 @@ class CoherenceFixer:
         fixed: list[str] = [paragraphs[0]]
 
         for i in range(1, len(paragraphs)):
-            prev = fixed[i - 1]   # use the (possibly already-fixed) predecessor
+            prev = fixed[i - 1]  # use the (possibly already-fixed) predecessor
             curr = paragraphs[i]
 
             if self._detect_incoherence(prev, curr):
@@ -216,9 +221,7 @@ class CoherenceFixer:
         in the next paragraph expected and coherent.
         """
         lower = para.lower()
-        for phrase in _CONTRAST_SETUP_ZH + tuple(
-            p.lower() for p in _CONTRAST_SETUP_EN
-        ):
+        for phrase in _CONTRAST_SETUP_ZH + tuple(p.lower() for p in _CONTRAST_SETUP_EN):
             if phrase in lower:
                 return True
         return False
@@ -241,16 +244,17 @@ class CoherenceFixer:
 # RetryOrchestrator data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AttemptRecord:
     """Records everything about a single rewrite attempt."""
 
     attempt_number: int
     rewritten_text: str
-    validation_result: Optional[ValidationResult]
-    quality_report: Optional[QualityReport]
-    overall_quality_score: float   # QualityReport.quality.overall_score; 0.0 if unavailable
-    action_taken: str              # see RetryOrchestrator for valid values
+    validation_result: ValidationResult | None
+    quality_report: QualityReport | None
+    overall_quality_score: float  # QualityReport.quality.overall_score; 0.0 if unavailable
+    action_taken: str  # see RetryOrchestrator for valid values
 
 
 @dataclass
@@ -267,6 +271,7 @@ class OrchestratorResult:
 # ---------------------------------------------------------------------------
 # RetryOrchestrator
 # ---------------------------------------------------------------------------
+
 
 class RetryOrchestrator:
     """
@@ -339,8 +344,12 @@ class RetryOrchestrator:
         attempt_mode: int = 1
 
         for attempt_num in range(1, self._max_retries + 1):
-            logger.debug("RetryOrchestrator: attempt %d/%d (mode=%d)",
-                         attempt_num, self._max_retries, attempt_mode)
+            logger.debug(
+                "RetryOrchestrator: attempt %d/%d (mode=%d)",
+                attempt_num,
+                self._max_retries,
+                attempt_mode,
+            )
 
             # ----------------------------------------------------------
             # 1. Rewrite
@@ -355,7 +364,7 @@ class RetryOrchestrator:
             # ----------------------------------------------------------
             # 2. Semantic validation
             # ----------------------------------------------------------
-            validation_result: Optional[ValidationResult] = None
+            validation_result: ValidationResult | None = None
             try:
                 validation_result = self._validator.validate(
                     anchor=anchor,
@@ -369,7 +378,7 @@ class RetryOrchestrator:
             # ----------------------------------------------------------
             # 3. Quality evaluation
             # ----------------------------------------------------------
-            quality_report: Optional[QualityReport] = None
+            quality_report: QualityReport | None = None
             try:
                 quality_report = self._quality_controller.evaluate(
                     text=rewritten,
@@ -379,27 +388,19 @@ class RetryOrchestrator:
                 logger.warning("Quality evaluation raised an exception: %s", exc)
 
             overall_score = (
-                quality_report.quality.overall_score
-                if quality_report is not None
-                else 0.0
+                quality_report.quality.overall_score if quality_report is not None else 0.0
             )
 
             # ----------------------------------------------------------
             # 4. Decide action
             # ----------------------------------------------------------
-            semantic_ok = (
-                validation_result is None or validation_result.passed
-            )
-            quality_ok = (
-                quality_report is None
-                or (
-                    not quality_report.quality.needs_regeneration
-                    and quality_report.final_action != "retry_quality"
-                )
+            semantic_ok = validation_result is None or validation_result.passed
+            quality_ok = quality_report is None or (
+                not quality_report.quality.needs_regeneration
+                and quality_report.final_action != "retry_quality"
             )
             detection_ok = (
-                quality_report is None
-                or quality_report.final_action != "retry_detection"
+                quality_report is None or quality_report.final_action != "retry_detection"
             )
 
             if semantic_ok and quality_ok and detection_ok:
@@ -438,8 +439,10 @@ class RetryOrchestrator:
             elif not quality_ok:
                 # Language quality below floor: strengthen quality instructions.
                 action = "quality_retry"
-                attempt_mode = 1   # same sampling; prompt is stricter on quality side
-                logger.debug("Attempt %d: quality check failed → next attempt=1 (quality focus)", attempt_num)
+                attempt_mode = 1  # same sampling; prompt is stricter on quality side
+                logger.debug(
+                    "Attempt %d: quality check failed → next attempt=1 (quality focus)", attempt_num
+                )
             else:
                 # Detection evasion failed.
                 action = "detection_retry"
@@ -487,9 +490,7 @@ class RetryOrchestrator:
         2. If none qualify, fall back to the attempt with the highest score
            (even if below the floor).
         """
-        above_floor = [
-            a for a in attempts if a.overall_quality_score >= self._min_quality_score
-        ]
+        above_floor = [a for a in attempts if a.overall_quality_score >= self._min_quality_score]
         candidates = above_floor if above_floor else attempts
 
         best = max(candidates, key=lambda a: a.overall_quality_score)

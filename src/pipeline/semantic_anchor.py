@@ -203,8 +203,6 @@ class SemanticAnchorBuilder:
         if not anchor.chunk_embeddings:
             return []
 
-        import numpy as np
-
         rewritten_chunks = self._split_paragraphs(rewritten_text)
         if not rewritten_chunks:
             # Treat the whole rewritten text as one chunk

@@ -41,9 +41,6 @@ def is_empty(s: str) -> bool:
 
 _CHINESE_PUNCT = r"。！？!?"
 _WESTERN_PUNCT = r".!?"
-_SENTENCE_DELIMITER = re.compile(
-    rf"(?<=[{_CHINESE_PUNCT}{_WESTERN_PUNCT}])(?=[^ 　])|(?<=[^ 　])(?=[{_CHINESE_PUNCT}{_WESTERN_PUNCT}])"
-)
 
 
 def split_sentences(text: str) -> list[str]:

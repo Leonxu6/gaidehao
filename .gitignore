@@ -3,8 +3,10 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
-# Editor / IDE (keep .claude if you want team sync; uncomment to ignore local Claude settings)
-# .claude/
+# Editor / IDE
+.claude/
+!.claude/agents/
+!.claude/agents/
 
 # Environment / secrets
 .env

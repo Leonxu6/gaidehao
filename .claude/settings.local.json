@@ -7,24 +7,14 @@
       "Bash(git fetch:*)",
       "Bash(git checkout:*)",
       "Bash(pip install:*)",
-      "Bash(python3 -m pip install -r requirements.txt -q)",
-      "Bash(python3 -m pip list)",
-      "Bash(python3:*)",
       "Bash(pip3 install:*)",
-      "Bash(DEEPSEEK_API_KEY=sk-010552964cca453a92cb82756ca9baa0 python3 -m pytest tests/test_llm_client.py -v 2>&1)",
-      "Bash(DEEPSEEK_API_KEY=sk-010552964cca453a92cb82756ca9baa0 python3 -m pytest tests/test_embedding_client.py -v 2>&1)",
-      "Bash(ls /Users/leon/project/gaidehao/.env*)",
-      "Bash(python -c \"import sys; print\\(sys.path\\)\")",
-      "Bash(for f:*)",
-      "Bash(do echo:*)",
-      "Read(//Users/leon/project/gaidehao/**)",
-      "Bash(done)",
       "Bash(git add:*)",
       "Bash(git rm:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
+      "Bash(python3:*)",
       "Bash(python:*)",
-      "Bash(DEEPSEEK_API_KEY=sk-010552964cca453a92cb82756ca9baa0 python3 main.py \"人工智能是当今最重要的技术之一。AI改变了很多行业并将继续发展。研究人员预计到2030年AI将贡献全球GDP的15%。\" --verbose 2>&1)"
+      "Read(//Users/leon/project/gaidehao/**)"
     ]
   }
 }

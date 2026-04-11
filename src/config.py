@@ -54,12 +54,31 @@ class EmbeddingConfig:
     """Local sentence-transformer embedding configuration."""
 
     model_name: str = "BAAI/bge-m3"
-    # Force CPU — BGE-M3 is always on CPU per architecture spec
+    # Target compute device.  Defaults to "cpu"; set to "mps" on Apple Silicon
+    # or "cuda" on GPU machines for significantly faster encoding.
+    # A __post_init__ hook logs a suggestion when MPS is available.
     device: str = "cpu"
     # Batch size for encode_batch
     batch_size: int = 32
     # Normalise embeddings to unit length (required for cosine similarity via dot product)
     normalize_embeddings: bool = True
+
+    def __post_init__(self) -> None:
+        # Warn users with Apple Silicon that MPS could be used instead of CPU
+        if self.device == "cpu":
+            try:
+                import torch
+
+                if torch.backends.mps.is_available():
+                    import logging
+
+                    logging.getLogger(__name__).info(
+                        "EmbeddingConfig: MPS is available on this machine. "
+                        "Set device='mps' in EmbeddingConfig for faster embedding inference. "
+                        "Example: EmbeddingConfig(device='mps')"
+                    )
+            except Exception:
+                pass  # torch not available — nothing to check
 
 
 @dataclass

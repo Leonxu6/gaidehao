@@ -10,6 +10,17 @@ from __future__ import annotations
 
 import re
 
+__all__ = [
+    "normalize",
+    "is_empty",
+    "split_sentences",
+    "split_paragraphs",
+    "tokenize",
+    "chinese_ratio",
+    "is_chinese",
+    "CHINESE_CHAR_THRESHOLD",
+]
+
 # ---------------------------------------------------------------------------
 # Normalisation
 # ---------------------------------------------------------------------------
@@ -94,7 +105,19 @@ _CJK_RANGE = (
     r"\U00020000-\U0002a6df"  # CJK Extension B (surrogate pair range)
 )
 
+# Pre-built regex for fast CJK run detection (used by tokenize)
 _CJK_TOKEN_RE = re.compile(f"[{_CJK_RANGE}]+")
+
+# Pre-built set for O(1) single-char CJK classification (used by chinese_ratio)
+_CJK_CODEPOINTS = frozenset(range(0x4e00, 0x9fff + 1))
+_CJK_EXT_A = frozenset(range(0x3400, 0x4dbf + 1))
+_CJK_EXT_B = frozenset(range(0x20000, 0x2a6df + 1))
+
+
+def _is_cjk(ch: str) -> bool:
+    """Return True if *ch* is a CJK ideograph (BMP or extension planes)."""
+    cp = ord(ch)
+    return cp in _CJK_CODEPOINTS or cp in _CJK_EXT_A or cp in _CJK_EXT_B
 _PUNCT_WHITESPACE_RE = re.compile(
     r"[\s，。！？、；：\u201c\u201d\u2018\u2019（）【】《》〈〉\[\](),.!?;:\"'\-\u2014\u2026·]+"
 )
@@ -136,13 +159,7 @@ def chinese_ratio(text: str) -> float:
     """Return the fraction of characters in *text* that are CJK ideographs."""
     if not text:
         return 0.0
-    cjk_count = sum(
-        1
-        for ch in text
-        if "\u4e00" <= ch <= "\u9fff"
-        or "\u3400" <= ch <= "\u4dbf"
-        or "\U00020000" <= ch <= "\U0002a6df"
-    )
+    cjk_count = sum(1 for ch in text if _is_cjk(ch))
     return cjk_count / len(text)
 
 

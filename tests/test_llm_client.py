@@ -1,7 +1,7 @@
 """
 Unit tests for src/models/llm_client.py.
 
-These tests use the real DeepSeek API — no mocking of the HTTP layer.
+These tests use the real DeepSeek API - no mocking of the HTTP layer.
 They DO mock at the openai.OpenAI level for the error-handling test to
 avoid actually sending a bad request.
 """
@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 import openai
 import pytest
 
-# API key — loaded from .env by tests/conftest.py
+# API key - loaded from .env by tests/conftest.py
 from tests.conftest import get_api_key
 
 DEEPSEEK_API_KEY = get_api_key()
@@ -88,7 +88,7 @@ def test_generate_json_structure():
 
 
 # ---------------------------------------------------------------------------
-# Test: error handling — network failure triggers retries then raises
+# Test: error handling - network failure triggers retries then raises
 # ---------------------------------------------------------------------------
 
 
@@ -151,3 +151,69 @@ def test_generate_stream_yields_chunks():
     assert len(chunks) > 0, "Stream should yield at least one chunk"
     full_text = "".join(chunks)
     assert len(full_text.strip()) > 0, "Streamed text must be non-empty"
+
+
+# ---------------------------------------------------------------------------
+# Test: _robust_json_parse edge cases
+# ---------------------------------------------------------------------------
+
+
+def test_robust_json_parse_strips_markdown_fence():
+    """Strategy 2: markdown fences should be stripped before parsing."""
+    raw = '```json\n{"status": "ok", "count": 1}\n```'
+    result = LLMClient._robust_json_parse(raw)
+    assert result == {"status": "ok", "count": 1}
+
+
+def test_robust_json_parse_strips_markdown_fence_no_lang_tag():
+    """Strategy 2: fences without 'json' language tag should also be stripped."""
+    raw = '```\n{"key": "value"}\n```'
+    result = LLMClient._robust_json_parse(raw)
+    assert result == {"key": "value"}
+
+
+def test_robust_json_parse_fullwidth_quotes():
+    """Strategy 4: curly/fallback quotes normalised to ASCII."""
+    # Note: fullwidth colon (\uff1a) followed by space produces {"key： "val"}
+    # which is not valid JSON even after normalisation.  Strategy 4 normalises
+    # fullwidth punctuation that appears INSIDE valid JSON structure.
+    raw = '{"status": \u201cok\u201d, \u201cname\u201d: \u201ctest\u201d}'
+    result = LLMClient._robust_json_parse(raw)
+    assert result == {"status": "ok", "name": "test"}
+
+
+def test_robust_json_parse_trailing_comma():
+    """Strategy 4: trailing commas before ] or } should be removed."""
+    raw = '{"items": [1, 2, 3,], "count": 3}'
+    result = LLMClient._robust_json_parse(raw)
+    assert result == {"items": [1, 2, 3], "count": 3}
+
+
+def test_robust_json_parse_extracts_first_dict_block():
+    """Strategy 3: first {...} block should be extracted when direct parse fails."""
+    raw = 'Here is the result: {\"result\": \"success\"}. Thank you!'
+    result = LLMClient._robust_json_parse(raw)
+    assert result == {"result": "success"}
+
+
+def test_robust_json_parse_item_level_recovery():
+    """Strategy 5: item-level extraction should recover propositions from broken JSON."""
+    raw = '{"propositions": [{"text": "Item one", "type": "fact"}, {"text": "Item two", "type": "claim"}]}'
+    result = LLMClient._robust_json_parse(raw)
+    assert "propositions" in result
+    assert len(result["propositions"]) == 2
+
+
+def test_robust_json_parse_valid_input_passthrough():
+    """Well-formed JSON should parse on the first attempt (strategy 1)."""
+    raw = '{"status": "ok", "count": 42}'
+    result = LLMClient._robust_json_parse(raw)
+    assert result == {"status": "ok", "count": 42}
+
+
+def test_robust_json_parse_truly_invalid_raises():
+    """Completely unparseable input should raise JSONDecodeError."""
+    raw = "this is not json at all {{}}"
+    import json
+    with pytest.raises(json.JSONDecodeError):
+        LLMClient._robust_json_parse(raw)

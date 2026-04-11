@@ -172,8 +172,10 @@ class LLMClient:
             except json.JSONDecodeError:
                 pass
 
-        # 4. Normalise problematic characters then retry
-        normalised = cleaned
+        # 4. Normalise problematic characters in raw (full-width quotes,
+        # trailing commas) and retry on both the normalised raw and the
+        # first {...} block extracted from it.
+        normalised = raw
         # Full-width / curly quotes → ASCII
         for bad, good in [
             ("\u201c", '"'),
@@ -223,9 +225,16 @@ class LLMClient:
                     return {"propositions": items}
 
         logger.error(
-            "All JSON parse strategies failed. Raw response (first 300 chars): %r", raw[:300]
+            "All 5 JSON parse strategies failed. "
+            "Raw response (first 500 chars): %r",
+            raw[:500],
         )
-        raise json.JSONDecodeError("Could not parse LLM response as JSON", raw, 0)
+        raise json.JSONDecodeError(
+            f"Could not parse LLM response as JSON after trying 5 strategies. "
+            f"Raw response begins with: {raw[:200]!r}",
+            raw,
+            0,
+        )
 
     def generate_stream(
         self,

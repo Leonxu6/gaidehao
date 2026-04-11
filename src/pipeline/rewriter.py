@@ -36,7 +36,17 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class RewriteConfig:
-    """Sampling parameters for the probabilistic rewriting step."""
+    """
+    Sampling parameters for the probabilistic rewriting step.
+
+    Mirostat v2 approximates natural writing burstiness by adjusting
+    per-token temperature dynamically.  Since DeepSeek does not expose
+    Mirostat natively, we simulate its paragraph-level effect by drawing
+    a per-paragraph temperature from Uniform(temperature ± variance),
+    clamped to [0.7, 1.1].  High-importance propositions are always included
+    in every paragraph prompt so the model never loses track of semantics
+    mid-document.
+    """
 
     temperature: float = 0.9
     top_p: float = 0.85
@@ -44,11 +54,10 @@ class RewriteConfig:
     presence_penalty: float = 0.1
     max_tokens: int = 4096
 
-    # Per-paragraph temperature variance.
-    # Each paragraph is generated with temperature drawn from
-    # Uniform(temperature - variance, temperature + variance),
-    # clamped to [0.7, 1.1].  This simulates the natural burstiness
-    # fluctuation that Mirostat v2 would produce at the token level.
+    # Per-paragraph temperature variance.  Each paragraph is generated with
+    # temperature drawn from Uniform(temperature - variance, temperature + variance),
+    # clamped to [0.7, 1.1].  Set to 0.0 to disable variance (all paragraphs use
+    # the same temperature).
     paragraph_temperature_variance: float = 0.1
 
 

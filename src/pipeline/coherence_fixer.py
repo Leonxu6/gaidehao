@@ -53,6 +53,10 @@ _CONTRAST_SETUP_EN = (
     "on the one hand",
 )
 
+# Module-level combined tuples (built once, reused by the class)
+_ALL_CONTRAST_WORDS = _CONTRAST_WORDS_ZH + _CONTRAST_WORDS_EN
+_ALL_CONTRAST_SETUP = _CONTRAST_SETUP_ZH + tuple(p.lower() for p in _CONTRAST_SETUP_EN)
+
 
 # ---------------------------------------------------------------------------
 # CoherenceFixer
@@ -186,7 +190,7 @@ class CoherenceFixer:
     def _starts_with_contrast(para: str) -> bool:
         """Return True if *para* opens with a known contrast word."""
         stripped = para.strip()
-        for word in _CONTRAST_WORDS_ZH + _CONTRAST_WORDS_EN:
+        for word in _ALL_CONTRAST_WORDS:
             if stripped.startswith(word):
                 return True
         return False
@@ -199,7 +203,7 @@ class CoherenceFixer:
         in the next paragraph expected and coherent.
         """
         lower = para.lower()
-        for phrase in _CONTRAST_SETUP_ZH + tuple(p.lower() for p in _CONTRAST_SETUP_EN):
+        for phrase in _ALL_CONTRAST_SETUP:
             if phrase in lower:
                 return True
         return False

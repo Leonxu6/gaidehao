@@ -317,16 +317,6 @@ class SemanticValidator:
 
         return results
 
-    def _get_layer2_thresholds(self, importance: str) -> tuple[float, float]:
-        """
-        Return the (entailment_threshold, contradiction_threshold) to use for
-        a proposition of the given *importance* level.
-        """
-        return self._importance_thresholds.get(
-            importance,
-            (self._entailment_threshold, self._contradiction_threshold),
-        )
-
     def _nli_check_batch(self, premise: str, hypotheses: list[str]) -> list[dict]:
         """
         Run NLI inference for one premise against multiple hypotheses in a single

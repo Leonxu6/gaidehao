@@ -107,6 +107,28 @@ class EmbeddingClient:
         """Return True if the underlying model has been loaded into memory."""
         return self._model is not None
 
+    def unload(self) -> None:
+        """
+        Release the loaded model from memory and reset the lazy-loader.
+
+        Useful for test isolation or when the client needs to be reconfigured
+        with a different device / model without creating a new instance.
+        """
+        self._model = None
+        logger.info("Embedding model unloaded.")
+
+    def reload(self) -> None:
+        """
+        Force-reload the embedding model, picking up any changes to config
+        (e.g. a different device or model_name).
+
+        If the model is not currently loaded this is a no-op (next encode()
+        call will load as normal).
+        """
+        self.unload()
+        # Immediately re-load with current config
+        self._get_model()
+
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------

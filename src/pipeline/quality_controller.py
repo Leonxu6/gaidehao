@@ -21,7 +21,12 @@ from collections import Counter
 from dataclasses import dataclass
 
 from src.models.llm_client import LLMClient
-from src.utils import is_chinese
+from src.utils import is_chinese, split_sentences as _split_sentences_unsafe, tokenize as _tokenize_raw
+
+
+def _tokenize(text: str) -> list[str]:
+    """Wrapper that converts utils.tokenize output to list[str] for Counter."""
+    return list(_tokenize_raw(text))
 
 logger = logging.getLogger(__name__)
 
@@ -246,41 +251,15 @@ class QualityController:
             return 0.0
         return len(set(tokens)) / len(tokens)
 
-    def _split_sentences(self, text: str) -> list[str]:
-        """
-        Split text into sentences using Chinese and Western punctuation.
-        Returns non-empty sentences only.
-        """
-        parts = re.split(r"[。！？!?\.]+", text)
-        return [p.strip() for p in parts if p.strip()]
+    @staticmethod
+    def _split_sentences(text: str) -> list[str]:
+        """Split text into sentences using the shared split_sentences utility."""
+        return _split_sentences_unsafe(text)
 
-    def _tokenize(self, text: str) -> list[str]:
-        """
-        Simple character-level tokeniser for Chinese text with space/punctuation
-        splitting for mixed content.
-
-        Strategy:
-        - Split on whitespace and common punctuation to get word-like tokens.
-        - For any remaining CJK runs, treat each character as a token.
-        This avoids a jieba dependency while remaining reasonable for Chinese.
-        """
-        # Split on spaces and common punctuation
-        rough_tokens = re.split(
-            r"[\s，。！？、；：\u201c\u201d\u2018\u2019（）【】《》〈〉\[\](),.!?;:\"'\-\u2014\u2026·]+",
-            text,
-        )
-        tokens: list[str] = []
-        for tok in rough_tokens:
-            tok = tok.strip()
-            if not tok:
-                continue
-            # Check if the token is purely CJK characters
-            if re.fullmatch(r"[\u4e00-\u9fff\u3400-\u4dbf]+", tok):
-                # Treat each CJK character as a separate token (unigram)
-                tokens.extend(list(tok))
-            else:
-                tokens.append(tok.lower())
-        return tokens
+    @staticmethod
+    def _tokenize(text: str) -> list[str]:
+        """Tokenise text using the shared tokenize utility."""
+        return _tokenize_raw(text)
 
     # ------------------------------------------------------------------
     # Track 2 — Linguistic quality metrics

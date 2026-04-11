@@ -149,3 +149,38 @@ def test_encode_consistent_with_encode_batch(client: EmbeddingClient):
     np.testing.assert_allclose(
         single, batch, atol=1e-5, err_msg="encode and encode_batch results differ"
     )
+
+
+# ---------------------------------------------------------------------------
+# Test: unload() / reload()
+# ---------------------------------------------------------------------------
+
+
+def test_unload_resets_is_loaded(client: EmbeddingClient):
+    """unload() should reset is_loaded to False."""
+    _ = client.encode("trigger load")
+    assert client.is_loaded
+    client.unload()
+    assert not client.is_loaded
+
+
+def test_reload_after_unload(client: EmbeddingClient):
+    """reload() should re-load the model after an unload."""
+    _ = client.encode("trigger load")
+    assert client.is_loaded
+    client.unload()
+    assert not client.is_loaded
+    client.reload()
+    assert client.is_loaded
+
+
+def test_reload_produces_same_embedding(client: EmbeddingClient):
+    """Embedding values should be identical before and after reload."""
+    text = "Test text for reload consistency."
+    emb_before = client.encode(text)
+    client.reload()
+    emb_after = client.encode(text)
+    np.testing.assert_allclose(
+        emb_before, emb_after, atol=1e-5, err_msg="Embedding changed after reload"
+    )
+

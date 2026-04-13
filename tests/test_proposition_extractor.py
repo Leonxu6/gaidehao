@@ -30,7 +30,6 @@ from src.pipeline.proposition_extractor import (
     Proposition,
     PropositionExtractor,
 )
-
 from src.utils import is_chinese
 
 # ---------------------------------------------------------------------------

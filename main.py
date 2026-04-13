@@ -18,7 +18,6 @@ import os
 import sys
 import textwrap
 
-
 # ---------------------------------------------------------------------------
 # Argument parsing
 # ---------------------------------------------------------------------------
@@ -321,7 +320,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.verbose:
         print("[INFO] Building pipeline …", file=sys.stderr)
 
-    from src.pipeline import ScholAIPipeline, PipelineConfig
+    from src.pipeline import PipelineConfig, ScholAIPipeline
 
     config = PipelineConfig(
         deepseek_api_key=api_key,

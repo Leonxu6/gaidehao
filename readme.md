@@ -1,91 +1,49 @@
-# ScholAI 项目说明书
+# ScholAI
 
-面向产品负责人、非开发读者：本项目要解决的是 **“在不大改意思的前提下，让文本的统计特征更接近人类写作”**，而不是在字面上做替换游戏。
+> A research prototype for meaning-preserving text transformation with semantic and quality evaluation.
 
----
+[中文说明](#中文说明) · [Product brief](PM.md) · [Architecture](技术架构.md) · [Research notes](技术调研报告.md)
 
-## 文档地图
+## Scope
 
-| 文件 | 用途 |
-|------|------|
-| [PM.md](PM.md) | 产品第一性原理、三条硬要求、与市面工具的本质区别 |
-| [技术架构.md](技术架构.md) | 五步流水线、语义验证、质量控制双轨、选型、硬件与阶段规划 |
-| [技术调研报告.md](技术调研报告.md) | NLI、语言质量、CPU-only、多模型显存四类专项结论与参数建议 |
+ScholAI explores how a text-transformation pipeline can preserve claims, named entities, and numerical facts while evaluating semantic consistency and language quality. It is an experimental project, not a production service.
 
----
+The repository combines controlled local-model generation with layered evaluation:
 
-## Claude Code：工程师 / PM / 找茬（本项目子代理）
+1. Extract claims and constraints from the source text.
+2. Generate candidate rewrites with controlled sampling.
+3. Check semantic consistency with embeddings and NLI.
+4. Evaluate quality using statistical and model-based signals.
+5. Retry or reject candidates that miss the configured quality bar.
 
-在终端运行 `claude` 时，本项目已配置三个**子代理**（定义在 [`.claude/agents/`](.claude/agents/)），主会话可按任务类型委派，不必手写长篇人设：
+## Safety and responsible use
 
-| 子代理 | 文件 | 何时用 |
-|--------|------|--------|
-| **engineer** | `engineer.md` | 写代码、跑测试、修 bug、技术实现 |
-| **product-manager** | `product-manager.md` | 澄清需求、用户故事、范围与验收标准（默认只读代码） |
-| **qa-critic** | `qa-critic.md` | 挑错、边界与风险、文档一致性（只读，不直接改代码） |
+This project is intended for legitimate editing, accessibility, localization, and writing-assistance research. It must not be used to misrepresent authorship, evade academic-integrity requirements, or bypass platform safeguards. Any deployment needs its own user policy, human review, and compliance assessment.
 
-**用法示例**（自然语言即可，例如）：「先用 product-manager 把需求收成验收标准，再让 engineer 实现，最后让 qa-critic 过一遍。」新加或修改 `.md` 文件后，若未自动加载，可重开会话或在 Claude Code 里执行 `/agents`。
+## Project status
 
-**多终端「真·团队」**（各会话可互相配合、实验功能）：见官方 [Agent Teams](https://code.claude.com/docs/en/agent-teams)。需在 `settings.json` 或环境里开启 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`，并由主会话按自然语言建队；队友也可复用上述子代理定义。详情以你本机 `claude --version` 与官方文档为准。
+Research prototype. The repository contains product documentation, architecture notes, experiments, and tests; interfaces and evaluation thresholds may change as the research evolves.
 
----
+## Getting started
 
-## 用一句话说清我们在做什么
+```bash
+# Create the environment and install dependencies.
+uv sync
 
-用本地大模型对 AI 文本做 **概率层重生成**（例如 Mirostat 采样），改变 **token 选取的统计分布**；用 **BGE-M3 + NLI** 锁住核心命题不丢不反转；用 **检测指标 + G-Eval/规则** 同时保证“像人写”和“写得好”。
+# Inspect available development tasks.
+make help
+```
 
----
+See the project documents above for model requirements, evaluation design, and hardware guidance. Keep credentials in local environment files; never commit API keys.
 
-## 非技术读者速读：五个步骤
+## 中文说明
 
-1. **读懂原文**：抽出论点、专名、数字。  
-2. **再生成**：在生成过程中干预采样，而不是事后改词。  
-3. **验语义**：全文向量粗筛 + 逐命题 NLI 细验。  
-4. **验质量**：两条线——统计上像不像人；语言上好不好。  
-5. **修与重试**：按失败类型调整策略，有次数与质量底线。
+ScholAI 是一个“语义不走样、质量可检查”的文本转换研究原型。它通过受控生成、语义一致性验证和质量评测来探索文本编辑工作流；不是生产服务，也不应用于代写、学术不端或规避平台规则。
 
----
+- [PM.md](PM.md)：产品边界与问题定义
+- [技术架构.md](技术架构.md)：五步流水线与验证设计
+- [技术调研报告.md](技术调研报告.md)：模型、硬件和评测调研
 
-## 关键专业词（查到时可对照）
+## Development workflow
 
-- **Token / 采样**：模型输出是一小段一段的符号单位；采样决定每一步如何从概率分布里选下一个 token。  
-- **困惑度（Perplexity, PPL）**：文本有多“难猜”，常与 AI 行文过于顺滑相关。  
-- **Burstiness**：句长、节奏波动；人类写作通常更有起伏。  
-- **TTR（Type-Token Ratio）**：词汇多样性的简单指标之一。  
-- **Embedding（嵌入）**：把整段话变成向量，用距离衡量“整体像不像”（粗筛）。  
-- **NLI（自然语言推理）**：判断“输出是否蕴含/矛盾某条命题”，用于抓 **极性反转** 和遗漏。  
-- **G-Eval**：用语义模型按维度打分的评测范式，这里用于语言质量。
-
----
-
-## 推荐运行环境（摘要）
-
-- **推荐**：NVIDIA RTX 3060 12GB 级别显卡，16GB 系统内存；主模型上下文建议 **≤4096 token**。  
-- **无显卡**：可用 CPU 跑同一套能力，质量相当但更慢，产品侧宜 **异步任务 + 结果通知**。  
-- **显存紧张**：可将 **BGE-M3 放 CPU**；必要时再考虑 BERTScore 放 CPU 或模型分时加载（详见调研报告）。
-
----
-
-## 阶段规划（与架构文档一致）
-
-1. 验证 Mirostat 降检测率  
-2. 命题提取 + NLI 语义约束  
-3. 检测规避与语言质量双轨  
-4. 连贯性修复与智能重试  
-5. CPU-only 体验（异步）  
-6. 集成测试与性能数据沉淀  
-
----
-
-## 反思与改进方向（持续更新）
-
-- **合规**：明确禁止场景（如学术造假），对外功能描述与 ToS 需单独立项。  
-- **检测器对抗是动态的**：阈值与策略应支持配置与回归测试。  
-- **中文命题验证**：NLI 以英文任务为主训，需用实测数据校准阈值，并保留 LLM 兜底路径。  
-- **7B 自评**：需强格式与多次采样聚合，避免分数抖动。  
-- **仓库现状**：流水线与测试代码已逐步落地；本 README 已增加 Claude Code 子代理说明，后续可再补安装与一键运行示例。
-- **密钥与安全**：API Key 等敏感配置务必走环境变量或本地忽略的配置文件，避免写入版本库或粘贴到聊天。
-
----
-
-*最后更新：与仓库内 PM / 技术架构 / 技术调研报告（2026-03-30）对齐；增补 Claude Code 子代理（2026-03-31）。*
+The repository includes focused agent roles under `.claude/agents/` for engineering, product review, and QA critique. Treat generated outputs as drafts: validate meaning, facts, and policy compliance before use.
